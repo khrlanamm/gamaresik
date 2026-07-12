@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "598848553918",
+    "project_id": "gamaresik",
+    "storage_bucket": "gamaresik.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:598848553918:android:41d9be975561eaadcdefef",
+        "android_client_info": {
+          "package_name": "com.benevology.gamaresik"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJaXQRiz93oM6pFXOA6qJI7rLD61LSapY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
