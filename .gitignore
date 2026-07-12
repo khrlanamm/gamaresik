@@ -1,3 +1,6 @@
+# AI Agent Artifacts
+.artifacts/
+
 # Miscellaneous
 *.class
 *.log
@@ -26,6 +29,7 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
+.flutter-plugins
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
@@ -38,6 +42,11 @@ app.*.symbols
 
 # Obfuscation related
 app.*.map.json
+
+# Android local properties
+android/local.properties
+android/key.properties
+android/app/google-services.json
 
 # Android Studio will place build artifacts here
 /android/app/debug

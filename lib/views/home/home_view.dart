@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/home_viewmodel.dart';
+import '../../utils/app_theme.dart';
 import '../scan/scan_view.dart';
 import '../profile/profile_view.dart';
 import 'learn_tips_view.dart';
@@ -27,140 +28,441 @@ class _HomeViewState extends State<HomeView> {
     final authViewModel = context.watch<AuthViewModel>();
     final homeViewModel = context.watch<HomeViewModel>();
 
+    final int totalScanned = homeViewModel.totalScanned;
+    final int nextTarget = totalScanned < 50
+        ? 50
+        : totalScanned < 100
+            ? 100
+            : totalScanned < 200
+                ? 200
+                : 500;
+    final double progress = (totalScanned / nextTarget).clamp(0.0, 1.0);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('GamaWaste'),
-        actions: [
-          IconButton(
-            icon: CircleAvatar(
-              backgroundImage: authViewModel.user?.photoURL != null
-                  ? NetworkImage(authViewModel.user!.photoURL!)
-                  : null,
-              child: authViewModel.user?.photoURL == null
-                  ? const Icon(Icons.person)
-                  : null,
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Column(
+        children: [
+          // Header with Navy Gradient
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
+            decoration: const BoxDecoration(
+              gradient: AppTheme.navyGradient,
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfileView()),
-              );
-            },
+            child: Column(
+              children: [
+                // Top Row: Logo & Profile
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                              )
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset('assets/brands/logo_icon.png'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: const TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Gama',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Waste',
+                                    style: TextStyle(
+                                      color: AppTheme.lightGreen,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Text(
+                              'Mari kelola sampah dengan bijak',
+                              style: TextStyle(
+                                color: Color(0xFFA5F3FC),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ProfileView()),
+                        );
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircleAvatar(
+                          backgroundColor: Colors.transparent,
+                          backgroundImage: authViewModel.user?.photoURL != null
+                              ? NetworkImage(authViewModel.user!.photoURL!)
+                              : null,
+                          child: authViewModel.user?.photoURL == null
+                              ? const Icon(Icons.person, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Stats Cards Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total',
+                        totalScanned.toString(),
+                        'item terpilah',
+                        Icons.trending_up,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        'Target',
+                        nextTarget.toString(),
+                        'item berikutnya',
+                        Icons.gps_fixed,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Progress Bar
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Progress ke $nextTarget item',
+                          style: const TextStyle(
+                            color: Color(0xFFA5F3FC),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Main Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // Scan Button
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ScanView()),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.greenGradient,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.greenPrimary.withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.qr_code_scanner,
+                                color: Colors.white),
+                          ),
+                          const SizedBox(width: 16),
+                          const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Scan Sampah',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              Text(
+                                'Identifikasi & pilah sekarang',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Section Title
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Kategori Sampah',
+                        style: TextStyle(
+                          color: AppTheme.navyPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const LearnTipsView()),
+                          );
+                        },
+                        icon: const Icon(Icons.book, size: 16),
+                        label: const Text('Pelajari'),
+                        style: TextButton.styleFrom(
+                          backgroundColor: AppTheme.navyPrimary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Category Cards
+                  _buildCategoryCard(
+                    'Organik',
+                    'Material terurai alami',
+                    homeViewModel.categoryCounts['Organik Terpilah'] ?? 0,
+                    totalScanned,
+                    AppTheme.greenPrimary,
+                    const Color(0xFFDCFCE7),
+                    Icons.eco_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCategoryCard(
+                    'Recycle Bersih',
+                    'Dapat didaur ulang',
+                    homeViewModel.categoryCounts['Recycle Bersih'] ?? 0,
+                    totalScanned,
+                    AppTheme.yellow,
+                    const Color(0xFFFEF9C3),
+                    Icons.recycling_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCategoryCard(
+                    'Residu',
+                    'Tidak dapat didaur ulang',
+                    homeViewModel.categoryCounts['Residu Terpilah'] ?? 0,
+                    totalScanned,
+                    AppTheme.red,
+                    const Color(0xFFFEE2E2),
+                    Icons.delete_outline_rounded,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            _buildStatCard('Total Scanned', homeViewModel.totalScanned.toString(), Colors.green),
-            const SizedBox(height: 16),
-            _buildStatCard('Next Target', homeViewModel.nextTarget.toString(), Colors.orange),
-            const SizedBox(height: 24),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Breakdown per Kategori',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildCategoryStatRow('Organik Terpilah', homeViewModel.categoryCounts['Organik Terpilah'] ?? 0, Colors.green),
-            _buildCategoryStatRow('Recycle Bersih', homeViewModel.categoryCounts['Recycle Bersih'] ?? 0, Colors.blue),
-            _buildCategoryStatRow('Residu Terpilah', homeViewModel.categoryCounts['Residu Terpilah'] ?? 0, Colors.grey),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ScanView()),
-                  );
-                },
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Scan Sampah', style: TextStyle(fontSize: 18)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 60,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LearnTipsView()),
-                  );
-                },
-                icon: const Icon(Icons.lightbulb_outline),
-                label: const Text('Pelajari', style: TextStyle(fontSize: 18)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.green,
-                  side: const BorderSide(color: Colors.green, width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildCategoryStatRow(String label, int value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildStatCard(
+      String label, String value, String sublabel, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: Colors.white),
               ),
               const SizedBox(width: 8),
-              Text(label, style: const TextStyle(fontSize: 16)),
+              Text(
+                label,
+                style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 14),
+              ),
             ],
           ),
+          const SizedBox(height: 8),
           Text(
-            value.toString(),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            sublabel,
+            style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 10),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color) {
+  Widget _buildCategoryCard(String title, String subtitle, int count, int total,
+      Color color, Color bgColor, IconData icon) {
+    final double percentage = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: bgColor),
       ),
       child: Column(
         children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: color),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppTheme.navyPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    count.toString(),
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const Text(
+                    'item',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: color),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: percentage,
+              minHeight: 6,
+              backgroundColor: bgColor,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
           ),
         ],
       ),
