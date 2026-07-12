@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import 'onboarding_view.dart';
 
 class AuthView extends StatelessWidget {
   const AuthView({super.key});
@@ -30,7 +31,10 @@ class AuthView extends StatelessWidget {
                     onPressed: () async {
                       final success = await viewModel.signInWithGoogle();
                       if (success && context.mounted) {
-                        Navigator.pop(context); // Go back to Home
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const OnboardingView()),
+                        );
                       } else if (!success && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Login failed. Please try again.')),

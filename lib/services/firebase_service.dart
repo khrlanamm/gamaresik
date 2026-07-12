@@ -42,4 +42,42 @@ class FirebaseService {
       'timestamp': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<int> getClassificationCount() async {
+    if (currentUser == null) return 0;
+    
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('classifications')
+        .count()
+        .get();
+    
+    return snapshot.count ?? 0;
+  }
+
+  Future<Map<String, int>> getCategoryCounts() async {
+    if (currentUser == null) return {};
+    
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('classifications')
+        .get();
+    
+    Map<String, int> counts = {
+      'Organik Terpilah': 0,
+      'Recycle Bersih': 0,
+      'Residu Terpilah': 0,
+    };
+
+    for (var doc in snapshot.docs) {
+      final result = doc.data()['result'] as String?;
+      if (result != null && counts.containsKey(result)) {
+        counts[result] = (counts[result] ?? 0) + 1;
+      }
+    }
+    
+    return counts;
+  }
 }
