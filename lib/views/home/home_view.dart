@@ -6,6 +6,7 @@ import '../../viewmodels/home_viewmodel.dart';
 import '../../utils/app_theme.dart';
 import '../scan/scan_view.dart';
 import '../profile/profile_view.dart';
+import '../history/history_view.dart';
 import 'learn_tips_view.dart';
 
 class HomeView extends StatefulWidget {
@@ -116,31 +117,54 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ],
                     ),
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ProfileView()),
-                        );
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const HistoryView()),
+                            );
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.history_rounded, color: Colors.white),
+                          ),
                         ),
-                        child: CircleAvatar(
-                          backgroundColor: Colors.transparent,
-                          backgroundImage: authViewModel.user?.photoURL != null
-                              ? NetworkImage(authViewModel.user!.photoURL!)
-                              : null,
-                          child: authViewModel.user?.photoURL == null
-                              ? const Icon(Icons.person, color: Colors.white)
-                              : null,
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const ProfileView()),
+                            );
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: Colors.transparent,
+                              backgroundImage: authViewModel.user?.photoURL != null
+                                  ? NetworkImage(authViewModel.user!.photoURL!)
+                                  : null,
+                              child: authViewModel.user?.photoURL == null
+                                  ? const Icon(Icons.person, color: Colors.white)
+                                  : null,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
