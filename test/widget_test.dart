@@ -1,30 +1,44 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:gamaresik/main.dart';
+import 'package:gamaresik/models/waste_category.dart';
+import 'package:gamaresik/views/auth/onboarding_view.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('WasteCategory', () {
+    test('every category has a unique, stable id', () {
+      final ids = WasteCategory.values.map((c) => c.id).toSet();
+      expect(ids.length, WasteCategory.values.length);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('fromId round-trips for every category', () {
+      for (final category in WasteCategory.values) {
+        expect(WasteCategory.fromId(category.id), category);
+      }
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('fromId falls back to residual for an unknown id', () {
+      expect(WasteCategory.fromId('unknown'), WasteCategory.residual);
+      expect(WasteCategory.fromId(null), WasteCategory.residual);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('every category has non-empty display content', () {
+      for (final category in WasteCategory.values) {
+        expect(category.title, isNotEmpty);
+        expect(category.binLabel, isNotEmpty);
+        expect(category.description, isNotEmpty);
+        expect(category.impact, isNotEmpty);
+        expect(category.sampleItems, isNotEmpty);
+      }
+    });
+  });
+
+  testWidgets('OnboardingView shows the first waste category page',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: OnboardingView()));
+
+    expect(find.text('Sampah Organik'), findsOneWidget);
+    expect(find.text('Lewati'), findsOneWidget);
+    expect(find.text('Selanjutnya'), findsOneWidget);
   });
 }

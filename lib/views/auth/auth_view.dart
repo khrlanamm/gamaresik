@@ -34,7 +34,7 @@ class AuthView extends StatelessWidget {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -110,7 +110,7 @@ class AuthView extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        const Color(0xFFF0F7FF).withOpacity(0.0),
+                        const Color(0xFFF0F7FF).withValues(alpha: 0.0),
                         const Color(0xFFF0F7FF),
                       ],
                     ),
@@ -122,20 +122,26 @@ class AuthView extends StatelessWidget {
                         height: 56,
                         child: ElevatedButton(
                           onPressed: () async {
-                            final success = await viewModel.signInWithGoogle();
-                            if (success && context.mounted) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const OnboardingView()),
-                              );
-                            } else if (!success && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Login failed. Please try again.')),
-                              );
+                            final result = await viewModel.signInWithGoogle();
+                            if (!context.mounted) return;
+                            switch (result) {
+                              case GoogleSignInResult.success:
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const OnboardingView()),
+                                );
+                                break;
+                              case GoogleSignInResult.cancelled:
+                                break;
+                              case GoogleSignInResult.failed:
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Gagal masuk. Silakan coba lagi.')),
+                                );
+                                break;
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -145,19 +151,13 @@ class AuthView extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(28),
                               side: BorderSide(
-                                  color: Colors.grey.withOpacity(0.2)),
+                                  color: Colors.grey.withValues(alpha: 0.2)),
                             ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Image.network(
-                                'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                                width: 20,
-                                height: 20,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.login, size: 20),
-                              ),
+                              const _GoogleMark(),
                               const SizedBox(width: 12),
                               const Text(
                                 'Masuk dengan Google',
@@ -184,6 +184,36 @@ class AuthView extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// A local, network-free stand-in for the Google "G" mark. The previous
+/// version fetched an .svg via Image.network — a format Flutter's built-in
+/// image decoder can't render, so it silently fell back to a generic icon
+/// on every launch.
+class _GoogleMark extends StatelessWidget {
+  const _GoogleMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Color(0xFF4285F4),
+        shape: BoxShape.circle,
+      ),
+      child: const Text(
+        'G',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          height: 1,
+        ),
+      ),
     );
   }
 }

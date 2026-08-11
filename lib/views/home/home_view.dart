@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/waste_category.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/home_viewmodel.dart';
 import '../../utils/app_theme.dart';
@@ -23,20 +24,24 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
+  Future<void> _openScan() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ScanView()),
+    );
+    if (mounted) {
+      context.read<HomeViewModel>().fetchTotalScanned();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
     final homeViewModel = context.watch<HomeViewModel>();
 
     final int totalScanned = homeViewModel.totalScanned;
-    final int nextTarget = totalScanned < 50
-        ? 50
-        : totalScanned < 100
-            ? 100
-            : totalScanned < 200
-                ? 200
-                : 500;
-    final double progress = (totalScanned / nextTarget).clamp(0.0, 1.0);
+    final int nextTarget = homeViewModel.nextTarget;
+    final double progress = homeViewModel.progress;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -64,7 +69,7 @@ class _HomeViewState extends State<HomeView> {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                               )
                             ],
@@ -123,7 +128,7 @@ class _HomeViewState extends State<HomeView> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: CircleAvatar(
@@ -192,7 +197,7 @@ class _HomeViewState extends State<HomeView> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 8,
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
                         valueColor:
                             const AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
@@ -204,137 +209,116 @@ class _HomeViewState extends State<HomeView> {
           ),
           // Main Content
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  // Scan Button
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ScanView()),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.greenGradient,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.greenPrimary.withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
-                          )
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
+            child: RefreshIndicator(
+              onRefresh: () => context.read<HomeViewModel>().fetchTotalScanned(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    // Scan Button
+                    InkWell(
+                      onTap: _openScan,
+                      child: Container(
+                        width: double.infinity,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.greenGradient,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.greenPrimary.withValues(alpha: 0.3),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            )
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.qr_code_scanner,
+                                  color: Colors.white),
                             ),
-                            child: const Icon(Icons.qr_code_scanner,
-                                color: Colors.white),
-                          ),
-                          const SizedBox(width: 16),
-                          const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Scan Sampah',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                            const SizedBox(width: 16),
+                            const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Scan Sampah',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                'Identifikasi & pilah sekarang',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
+                                Text(
+                                  'Identifikasi & pilah sekarang',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Section Title
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Kategori Sampah',
-                        style: TextStyle(
-                          color: AppTheme.navyPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const LearnTipsView()),
-                          );
-                        },
-                        icon: const Icon(Icons.book, size: 16),
-                        label: const Text('Pelajari'),
-                        style: TextButton.styleFrom(
-                          backgroundColor: AppTheme.navyPrimary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                    const SizedBox(height: 24),
+                    // Section Title
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Kategori Sampah',
+                          style: TextStyle(
+                            color: AppTheme.navyPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const LearnTipsView()),
+                            );
+                          },
+                          icon: const Icon(Icons.book, size: 16),
+                          label: const Text('Pelajari'),
+                          style: TextButton.styleFrom(
+                            backgroundColor: AppTheme.navyPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Category Cards
+                    for (final category in WasteCategory.values) ...[
+                      _buildCategoryCard(
+                        category,
+                        homeViewModel.categoryCounts[category] ?? 0,
+                        totalScanned,
                       ),
+                      if (category != WasteCategory.values.last)
+                        const SizedBox(height: 12),
                     ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Category Cards
-                  _buildCategoryCard(
-                    'Organik',
-                    'Material terurai alami',
-                    homeViewModel.categoryCounts['Organik Terpilah'] ?? 0,
-                    totalScanned,
-                    AppTheme.greenPrimary,
-                    const Color(0xFFDCFCE7),
-                    Icons.eco_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildCategoryCard(
-                    'Recycle Bersih',
-                    'Dapat didaur ulang',
-                    homeViewModel.categoryCounts['Recycle Bersih'] ?? 0,
-                    totalScanned,
-                    AppTheme.yellow,
-                    const Color(0xFFFEF9C3),
-                    Icons.recycling_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildCategoryCard(
-                    'Residu',
-                    'Tidak dapat didaur ulang',
-                    homeViewModel.categoryCounts['Residu Terpilah'] ?? 0,
-                    totalScanned,
-                    AppTheme.red,
-                    const Color(0xFFFEE2E2),
-                    Icons.delete_outline_rounded,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -348,9 +332,9 @@ class _HomeViewState extends State<HomeView> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,7 +345,7 @@ class _HomeViewState extends State<HomeView> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 18, color: Colors.white),
@@ -391,8 +375,7 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildCategoryCard(String title, String subtitle, int count, int total,
-      Color color, Color bgColor, IconData icon) {
+  Widget _buildCategoryCard(WasteCategory category, int count, int total) {
     final double percentage = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
 
     return Container(
@@ -400,7 +383,7 @@ class _HomeViewState extends State<HomeView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bgColor),
+        border: Border.all(color: category.bgColor),
       ),
       child: Column(
         children: [
@@ -410,10 +393,10 @@ class _HomeViewState extends State<HomeView> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color,
+                  color: category.color,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: Colors.white),
+                child: Icon(category.icon, color: Colors.white),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -421,7 +404,7 @@ class _HomeViewState extends State<HomeView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      category.shortLabel,
                       style: const TextStyle(
                         color: AppTheme.navyPrimary,
                         fontWeight: FontWeight.bold,
@@ -429,7 +412,7 @@ class _HomeViewState extends State<HomeView> {
                       ),
                     ),
                     Text(
-                      subtitle,
+                      category.homeSubtitle,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
@@ -441,7 +424,7 @@ class _HomeViewState extends State<HomeView> {
                   Text(
                     count.toString(),
                     style: TextStyle(
-                      color: color,
+                      color: category.color,
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
                     ),
@@ -460,8 +443,8 @@ class _HomeViewState extends State<HomeView> {
             child: LinearProgressIndicator(
               value: percentage,
               minHeight: 6,
-              backgroundColor: bgColor,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+              backgroundColor: category.bgColor,
+              valueColor: AlwaysStoppedAnimation<Color>(category.color),
             ),
           ),
         ],

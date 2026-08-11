@@ -52,9 +52,12 @@ class ProfileView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildSettingItem(Icons.edit, 'Edit Profil', () {}),
-            _buildSettingItem(Icons.feedback_outlined, 'Kirim Masukan', () {}),
-            _buildSettingItem(Icons.info_outline, 'Tentang', () {}),
+            _buildSettingItem(
+                Icons.edit, 'Edit Profil', () => _showComingSoon(context)),
+            _buildSettingItem(Icons.feedback_outlined, 'Kirim Masukan',
+                () => _showComingSoon(context)),
+            _buildSettingItem(
+                Icons.info_outline, 'Tentang', () => _showAbout(context)),
             _buildSettingItem(Icons.logout, 'Keluar', () async {
               await viewModel.signOut();
               if (context.mounted) {
@@ -64,6 +67,31 @@ class ProfileView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Fitur ini akan segera hadir.')),
+    );
+  }
+
+  void _showAbout(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'GamaWaste',
+      applicationVersion: '1.0.0',
+      applicationIcon: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset('assets/brands/logo_icon.png', width: 40, height: 40),
+      ),
+      applicationLegalese: '© ${DateTime.now().year} GamaWaste — Universitas Gadjah Mada',
+      children: const [
+        SizedBox(height: 16),
+        Text(
+          'GamaWaste membantu civitas UGM memilah sampah dengan cepat dan tepat sesuai standar pengelolaan sampah kampus.',
+        ),
+      ],
     );
   }
 

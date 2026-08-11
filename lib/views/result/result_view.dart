@@ -1,25 +1,57 @@
 import 'package:flutter/material.dart';
+import '../../models/waste_category.dart';
 import '../../services/firebase_service.dart';
 import '../../utils/app_theme.dart';
 
-class ResultView extends StatelessWidget {
+class ResultView extends StatefulWidget {
   final String imagePath;
   const ResultView({super.key, required this.imagePath});
 
   @override
-  Widget build(BuildContext context) {
-    // Mock result for now, could be passed from ScanViewModel
-    final resultType = "recyclable"; // organic, recyclable, residual
-    final info = _getWasteInfo(resultType);
+  State<ResultView> createState() => _ResultViewState();
+}
 
-    final FirebaseService firebaseService = FirebaseService();
+class _ResultViewState extends State<ResultView> {
+  final FirebaseService _firebaseService = FirebaseService();
+  bool _isSaving = false;
+  late final WasteCategory _category;
+  late final String _itemName;
 
-    void saveResult() async {
-      await firebaseService.saveClassification({
-        'result': info.title,
-        'imagePath': imagePath,
-      });
+  @override
+  void initState() {
+    super.initState();
+    _category = _mockClassify(widget.imagePath);
+    _itemName = _category.sampleItems.first;
+  }
+
+  // TODO: replace with a real on-device/ML classification of the captured
+  // photo. Until that's wired up, this derives a deterministic category from
+  // the image path so results vary run-to-run instead of always showing the
+  // same category.
+  WasteCategory _mockClassify(String imagePath) {
+    final hash = imagePath.hashCode.abs();
+    return WasteCategory.values[hash % WasteCategory.values.length];
+  }
+
+  Future<void> _finish() async {
+    setState(() => _isSaving = true);
+    try {
+      await _firebaseService.saveClassification(_category, imagePath: widget.imagePath);
+      if (mounted) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan hasil. Coba lagi.')),
+      );
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final category = _category;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -37,7 +69,7 @@ class ResultView extends StatelessWidget {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -66,17 +98,17 @@ class ResultView extends StatelessWidget {
                         width: 128,
                         height: 128,
                         decoration: BoxDecoration(
-                          color: info.bgColor,
+                          color: category.bgColor,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             )
                           ],
                         ),
-                        child: Icon(info.icon, size: 64, color: info.color),
+                        child: Icon(category.icon, size: 64, color: category.color),
                       ),
                       Positioned(
                         top: -8,
@@ -99,9 +131,9 @@ class ResultView extends StatelessWidget {
                 Center(
                   child: Column(
                     children: [
-                      const Text(
-                        'Botol Plastik', // Mock item name
-                        style: TextStyle(
+                      Text(
+                        _itemName,
+                        style: const TextStyle(
                           color: AppTheme.navyPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -109,7 +141,7 @@ class ResultView extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        info.title,
+                        category.title,
                         style: const TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                     ],
@@ -120,9 +152,9 @@ class ResultView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: info.bgColor,
+                    color: category.bgColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: info.color, width: 2),
+                    border: Border.all(color: category.color, width: 2),
                   ),
                   child: Column(
                     children: [
@@ -132,9 +164,9 @@ class ResultView extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        info.binColor,
+                        category.binLabel,
                         style: TextStyle(
-                          color: info.color,
+                          color: category.color,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
@@ -146,20 +178,20 @@ class ResultView extends StatelessWidget {
                 // Description
                 _buildInfoSection(
                   'Apa yang harus dilakukan?',
-                  info.description,
+                  category.description,
                 ),
                 const SizedBox(height: 24),
                 // Examples
                 _buildInfoSection(
                   'Item Serupa',
-                  info.examples,
+                  category.examplesText,
                   useCard: true,
                 ),
                 const SizedBox(height: 24),
                 // Environmental Impact
                 _buildInfoSection(
                   'Dampak Lingkungan',
-                  info.impact,
+                  category.impact,
                   isBlue: true,
                 ),
                 const SizedBox(height: 40),
@@ -168,21 +200,29 @@ class ResultView extends StatelessWidget {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      saveResult();
-                      Navigator.popUntil(context, (route) => route.isFirst);
-                    },
+                    onPressed: _isSaving ? null : _finish,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.greenPrimary,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          AppTheme.greenPrimary.withValues(alpha: 0.6),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(28),
                       ),
                     ),
-                    child: const Text(
-                      'Kembali ke Beranda',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Kembali ke Beranda',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -215,7 +255,7 @@ class ResultView extends StatelessWidget {
             color: isBlue ? const Color(0xFFEEF5FB) : (useCard ? Colors.white : Colors.transparent),
             borderRadius: BorderRadius.circular(12),
             border: useCard
-                ? Border.all(color: Colors.grey.withOpacity(0.1))
+                ? Border.all(color: Colors.grey.withValues(alpha: 0.1))
                 : (isBlue ? Border.all(color: const Color(0xFFBFDBFE)) : null),
           ),
           child: Text(
@@ -230,71 +270,4 @@ class ResultView extends StatelessWidget {
       ],
     );
   }
-
-  _WasteTypeInfo _getWasteInfo(String type) {
-    switch (type) {
-      case 'organic':
-        return _WasteTypeInfo(
-          icon: Icons.eco_rounded,
-          color: AppTheme.greenPrimary,
-          bgColor: const Color(0xFFE6F7EE),
-          title: 'Sampah Organik',
-          binColor: 'Tempat Sampah Hijau',
-          description:
-              'Item ini dapat terurai secara alami. Item ini harus dibuang ke tempat sampah organik untuk dijadikan kompos.',
-          examples: 'Sisa makanan, kulit buah, sayuran, daun kering, ampas kopi',
-          impact:
-              'Mengompos sampah organik mengurangi emisi metana dari tempat pembuangan dan menciptakan tanah yang kaya nutrisi.',
-        );
-      case 'recyclable':
-        return _WasteTypeInfo(
-          icon: Icons.recycling_rounded,
-          color: AppTheme.yellow,
-          bgColor: const Color(0xFFFFF9C4),
-          title: 'Sampah Recycle Bersih',
-          binColor: 'Tempat Sampah Kuning',
-          description:
-              'Item ini dapat didaur ulang menjadi produk baru. Pastikan bersih sebelum dimasukkan ke tempat sampah recycle.',
-          examples: 'Botol plastik, kertas, kardus, kaleng logam, botol kaca',
-          impact:
-              'Daur ulang menghemat sumber daya alam dan mengurangi konsumsi energi dalam manufaktur.',
-        );
-      case 'residual':
-      default:
-        return _WasteTypeInfo(
-          icon: Icons.delete_outline_rounded,
-          color: AppTheme.red,
-          bgColor: const Color(0xFFFFEBEE),
-          title: 'Sampah Residu',
-          binColor: 'Tempat Sampah Merah',
-          description:
-              'Item ini tidak dapat didaur ulang atau dikompos. Item ini harus dibuang ke tempat sampah umum.',
-          examples: 'Kemasan sachet, bungkus berminyak, masker, popok, styrofoam',
-          impact:
-              'Minimalkan sampah residu dengan memilih alternatif yang dapat digunakan kembali dan didaur ulang.',
-        );
-    }
-  }
-}
-
-class _WasteTypeInfo {
-  final IconData icon;
-  final Color color;
-  final Color bgColor;
-  final String title;
-  final String binColor;
-  final String description;
-  final String examples;
-  final String impact;
-
-  _WasteTypeInfo({
-    required this.icon,
-    required this.color,
-    required this.bgColor,
-    required this.title,
-    required this.binColor,
-    required this.description,
-    required this.examples,
-    required this.impact,
-  });
 }

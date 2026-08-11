@@ -75,86 +75,94 @@ class _OnboardingViewState extends State<OnboardingView> {
                 },
                 itemBuilder: (context, index) {
                   final page = _pages[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Icon Circle
-                        Container(
-                          width: 192,
-                          height: 192,
-                          decoration: BoxDecoration(
-                            color: page.bgColor,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(minHeight: constraints.maxHeight),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Icon Circle
+                              Container(
+                                width: 192,
+                                height: 192,
+                                decoration: BoxDecoration(
+                                  color: page.bgColor,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  page.icon,
+                                  size: 96,
+                                  color: page.color,
+                                ),
+                              ),
+                              const SizedBox(height: 48),
+                              // Title
+                              Text(
+                                page.title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.navyPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Color accent bar
+                              Container(
+                                width: 48,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: page.color,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              // Description
+                              Text(
+                                page.description,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 40),
+                              // Dots Indicator
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  _pages.length,
+                                  (index) => AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    margin: const EdgeInsets.only(right: 8),
+                                    height: 8,
+                                    width: _currentPage == index ? 32 : 8,
+                                    decoration: BoxDecoration(
+                                      color: _currentPage == index
+                                          ? AppTheme.navyPrimary
+                                          : const Color(0xFFCBD5E1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          child: Icon(
-                            page.icon,
-                            size: 96,
-                            color: page.color,
-                          ),
                         ),
-                        const SizedBox(height: 48),
-                        // Title
-                        Text(
-                          page.title,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.navyPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Color accent bar
-                        Container(
-                          width: 48,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: page.color,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // Description
-                        Text(
-                          page.description,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        // Dots Indicator
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            _pages.length,
-                            (index) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              margin: const EdgeInsets.only(right: 8),
-                              height: 8,
-                              width: _currentPage == index ? 32 : 8,
-                              decoration: BoxDecoration(
-                                color: _currentPage == index
-                                    ? AppTheme.navyPrimary
-                                    : const Color(0xFFCBD5E1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),

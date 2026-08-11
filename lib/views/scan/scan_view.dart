@@ -57,8 +57,13 @@ class _ScanViewState extends State<ScanView> {
         backgroundColor: Colors.black,
         body: Consumer<ScanViewModel>(
           builder: (context, vm, child) {
+            if (vm.errorMessage != null) {
+              return _buildErrorState(context, vm);
+            }
             if (!vm.isInitialized) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
             }
             return Stack(
               children: [
@@ -115,7 +120,7 @@ class _ScanViewState extends State<ScanView> {
                     height: 280,
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: AppTheme.greenPrimary.withOpacity(0.5),
+                          color: AppTheme.greenPrimary.withValues(alpha: 0.5),
                           width: 2),
                       borderRadius: BorderRadius.circular(32),
                     ),
@@ -138,11 +143,11 @@ class _ScanViewState extends State<ScanView> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.navyPrimary.withOpacity(0.9),
+                      color: AppTheme.navyPrimary.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 10,
                         )
                       ],
@@ -153,7 +158,7 @@ class _ScanViewState extends State<ScanView> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.lightbulb_outline,
@@ -225,6 +230,47 @@ class _ScanViewState extends State<ScanView> {
     );
   }
 
+  Widget _buildErrorState(BuildContext context, ScanViewModel vm) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 64),
+            const SizedBox(height: 24),
+            Text(
+              vm.errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: vm.initializeCamera,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.greenPrimary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+                child: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Kembali', style: TextStyle(color: Colors.white70)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCorner({
     double? left,
     double? top,
@@ -276,7 +322,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withValues(alpha: 0.05)
       ..strokeWidth = 1;
 
     for (var i = 1; i < 3; i++) {

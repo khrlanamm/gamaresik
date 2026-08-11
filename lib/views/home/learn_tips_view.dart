@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../models/waste_category.dart';
 import '../../utils/app_theme.dart';
 
 class LearnTipsView extends StatelessWidget {
@@ -22,7 +23,7 @@ class LearnTipsView extends StatelessWidget {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -54,8 +55,8 @@ class LearnTipsView extends StatelessWidget {
                 // Organik Terpilah
                 _buildSection(
                   title: 'Organik Terpilah',
-                  color: AppTheme.greenPrimary,
-                  icon: Icons.eco_rounded,
+                  color: WasteCategory.organic.color,
+                  icon: WasteCategory.organic.icon,
                   description:
                       'Sampah organik adalah jenis sampah yang berasal dari sisa makhluk hidup dan sangat mudah membusuk atau terurai secara alami oleh lingkungan. Sampah ini biasanya berasal dari sisa dapur atau sapuan halaman, yang nantinya akan diproses lebih lanjut untuk dijadikan pupuk kompos.',
                   examples: [
@@ -70,8 +71,8 @@ class LearnTipsView extends StatelessWidget {
                 // Recycle Bersih Terpilah
                 _buildSection(
                   title: 'Recycle Bersih Terpilah',
-                  color: AppTheme.yellow,
-                  icon: Icons.recycling_rounded,
+                  color: WasteCategory.recyclable.color,
+                  icon: WasteCategory.recyclable.icon,
                   description:
                       'Sampah recycle adalah sampah berbahan non-organik yang masih memiliki nilai ekonomi dan wujudnya dapat didaur ulang menjadi produk baru. Syarat paling penting untuk kategori ini adalah wujud fisik sampah harus dalam keadaan bersih, kering, dan bebas dari kontaminasi sisa makanan maupun minyak.',
                   examples: [
@@ -86,8 +87,8 @@ class LearnTipsView extends StatelessWidget {
                 // Residu Terpilah
                 _buildSection(
                   title: 'Residu Terpilah',
-                  color: AppTheme.red,
-                  icon: Icons.delete_outline_rounded,
+                  color: WasteCategory.residual.color,
+                  icon: WasteCategory.residual.icon,
                   description:
                       'Sampah residu adalah jenis sampah sisa yang sudah tidak memiliki nilai jual, sulit didaur ulang oleh pabrik, atau material recycle yang sudah terlanjur kotor dan berminyak. Kategori ini juga menjadi tempat pembuangan akhir untuk sampah-sampah kebersihan diri.',
                   examples: [
@@ -210,7 +211,7 @@ class LearnTipsView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,9 +240,9 @@ class LearnTipsView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.05),
+            color: color.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.1)),
+            border: Border.all(color: color.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

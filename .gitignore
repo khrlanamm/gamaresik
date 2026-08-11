@@ -37,6 +37,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Environment variables
+.env*
+*-firebase-adminsdk-*.json
+
 # Symbolication related
 app.*.symbols
 
@@ -52,3 +56,13 @@ android/app/google-services.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS related
+ios/Pods/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/xcuserdata/
