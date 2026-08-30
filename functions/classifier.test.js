@@ -47,18 +47,18 @@ function stubExamples(count) {
   return fn;
 }
 
-const HIGH = { label: "Organik Terpilah", confidenceScore: 0.9, reasoning: "jelas" };
-const LOW = { label: "Organik Terpilah", confidenceScore: 0.3, reasoning: "ragu" };
-const FEWSHOT = { label: "Residu Terpilah", confidenceScore: 0.8, reasoning: "kotor" };
+const HIGH = { label: "organik", confidenceScore: 0.9, reasoning: "jelas" };
+const LOW = { label: "organik", confidenceScore: 0.3, reasoning: "ragu" };
+const FEWSHOT = { label: "residu", confidenceScore: 0.8, reasoning: "kotor" };
 
 test("category vocabulary matches the Flutter WasteCategory contract", () => {
   assert.deepStrictEqual(CATEGORIES, [
-    "Organik Terpilah",
-    "Recycle Bersih Terpilah",
-    "Residu Terpilah",
+    "organik",
+    "recycle",
+    "residu",
   ]);
   assert.deepStrictEqual(CATEGORY_IDS, ["organic", "recyclable", "residual"]);
-  assert.strictEqual(CATEGORY_TO_ID["Organik Terpilah"], "organic");
+  assert.strictEqual(CATEGORY_TO_ID["organik"], "organic");
 });
 
 test("normalizeConfig accepts a valid document unchanged", () => {
@@ -122,7 +122,7 @@ test("few-shot mode always grounds the prompt, skipping the zero-shot pass", asy
   assert.strictEqual(fetchExamples.requested, 3);
   assert.strictEqual(result.usedFewShot, true);
   assert.strictEqual(result.fewShotExampleCount, 3);
-  assert.strictEqual(result.label, "Residu Terpilah");
+  assert.strictEqual(result.label, "residu");
 });
 
 test("few-shot mode reports usedFewShot=false when the pool is empty", async () => {
@@ -227,4 +227,122 @@ test("a threshold of 0 disables escalation entirely", async () => {
 
   assert.strictEqual(result.escalated, false);
   assert.strictEqual(runInference.calls.length, 1);
+});
+
+// --- evaluation instrumentation -------------------------------------------
+// Sections 3.6.2 and 4.6 report latency and token cost. Both are only
+// recoverable if every inference pass is measured on its own, so these guard
+// the shape the batch harness and the metrics script will read back.
+
+/** Inference stub that also reports latency and token usage. */
+function stubMetered(...results) {
+  const calls = [];
+  const fn = async (examples, kind) => {
+    calls.push({ examples, kind });
+    const next = results[calls.length - 1];
+    if (!next) throw new Error(`unexpected inference call #${calls.length}`);
+    return next;
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+const METERED_LOW = {
+  ...LOW,
+  latencyMs: 900,
+  usage: {
+    promptTokenCount: 1200,
+    thoughtsTokenCount: 300,
+    candidatesTokenCount: 40,
+    totalTokenCount: 1540,
+  },
+};
+
+const METERED_FEWSHOT = {
+  ...FEWSHOT,
+  latencyMs: 1600,
+  usage: {
+    promptTokenCount: 4100,
+    thoughtsTokenCount: 250,
+    candidatesTokenCount: 35,
+    totalTokenCount: 4385,
+  },
+};
+
+test("an unescalated scan records exactly one pass", async () => {
+  const result = await classify({
+    runInference: stubMetered({ ...METERED_LOW, confidenceScore: 0.9 }),
+    fetchExamples: stubExamples(3),
+    mode: "selective",
+    threshold: 0.5,
+    fewShotCount: 3,
+  });
+
+  assert.strictEqual(result.inferenceCount, 1);
+  assert.strictEqual(result.passes.length, 1);
+  assert.strictEqual(result.passes[0].kind, "zero-shot");
+  assert.strictEqual(result.passes[0].exampleCount, 0);
+  assert.strictEqual(result.inferenceLatencyMs, 900);
+  assert.strictEqual(result.usageTotals.totalTokens, 1540);
+});
+
+test("an escalated scan sums latency and tokens across both passes", async () => {
+  const result = await classify({
+    runInference: stubMetered(METERED_LOW, METERED_FEWSHOT),
+    fetchExamples: stubExamples(3),
+    mode: "selective",
+    threshold: 0.5,
+    fewShotCount: 3,
+  });
+
+  assert.strictEqual(result.inferenceCount, 2, "zero-shot then few-shot");
+  assert.deepStrictEqual(
+      result.passes.map((p) => p.kind),
+      ["zero-shot", "few-shot"],
+  );
+  assert.strictEqual(result.passes[1].exampleCount, 3);
+
+  // The escalation is what section 4.6 weighs against the accuracy it buys.
+  assert.strictEqual(result.inferenceLatencyMs, 2500, "900 + 1600");
+  assert.strictEqual(result.usageTotals.promptTokens, 5300, "1200 + 4100");
+  assert.strictEqual(result.usageTotals.thoughtsTokens, 550, "300 + 250");
+  assert.strictEqual(result.usageTotals.outputTokens, 75, "40 + 35");
+  assert.strictEqual(result.usageTotals.totalTokens, 5925);
+});
+
+test("thinking tokens stay separate from the visible answer", async () => {
+  const result = await classify({
+    runInference: stubMetered(METERED_LOW),
+    fetchExamples: stubExamples(0),
+    mode: "zero-shot",
+    threshold: 0.5,
+    fewShotCount: 3,
+  });
+
+  // Billed as output but reported apart, because equation 3.11 prices input
+  // and output separately and thinking dwarfs the answer on Gemini 3.x.
+  assert.strictEqual(result.usageTotals.thoughtsTokens, 300);
+  assert.strictEqual(result.usageTotals.outputTokens, 40);
+  assert.notStrictEqual(
+      result.usageTotals.thoughtsTokens,
+      result.usageTotals.outputTokens,
+  );
+});
+
+test("a pass with no usage metadata degrades to zeroes, not NaN", async () => {
+  const result = await classify({
+    runInference: stubMetered({ ...LOW, confidenceScore: 0.9 }),
+    fetchExamples: stubExamples(3),
+    mode: "selective",
+    threshold: 0.5,
+    fewShotCount: 3,
+  });
+
+  assert.deepStrictEqual(result.usageTotals, {
+    promptTokens: 0,
+    thoughtsTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  });
+  assert.strictEqual(result.inferenceLatencyMs, 0);
 });

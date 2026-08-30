@@ -28,10 +28,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Human-validated few-shot examples. Populated by submitCorrection and read
-    // back by classifyWaste, both server-side. Clients get no access at all:
-    // these documents reference other users' images.
-    match /few_shot_data/{entryId} {
+    // Human-validated few-shot examples (named as in section 4.4.3 of the
+    // thesis). Populated by submitCorrection and read back by classifyWaste,
+    // both server-side. Clients get no access at all: these documents
+    // reference other users' images.
+    match /data_fewshot/{entryId} {
       allow read, write: if false;
     }
 

@@ -1,5 +1,4 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -17,12 +16,48 @@ const {
 initializeApp();
 const db = getFirestore();
 
-const geminiApiKey = defineSecret("GEMINI_API_KEY");
-
 const REGION = "asia-southeast2";
+
+/** GCP project that owns both this function and the Vertex AI quota. */
+const PROJECT_ID = process.env.GCLOUD_PROJECT || "gamaresik";
+
+/**
+ * Vertex location serving the model.
+ *
+ * Gemini 3.x publisher models are only exposed through the `global` endpoint —
+ * regional endpoints (asia-southeast2 included) return NOT_FOUND for them, so
+ * this is not a tunable. Verified against this project on 30 Aug 2026.
+ */
+const VERTEX_LOCATION = "global";
+
+/**
+ * Pinned model id.
+ *
+ * `gemini-2.5-flash` — the id the thesis was originally written around — was
+ * withdrawn from the Gemini Developer API for new users in July 2026 and is
+ * scheduled for full shutdown on 16 Oct 2026, so it is not a safe basis for
+ * results that must stay reproducible after submission.
+ */
+const MODEL_ID = "gemini-3.6-flash";
+
+/**
+ * Thinking effort, pinned rather than left to the model default.
+ *
+ * Thinking tokens are billed as output and dominate both latency and cost:
+ * a trivial prompt measured 429 thinking tokens on the default setting versus
+ * 245 on "low". Leaving this implicit would let a silent change to Google's
+ * default land between Tahap 1 and Tahap 2 and destroy their comparability.
+ */
+const THINKING_LEVEL = "low";
 
 /** Safety rail so an oversized upload cannot blow up the function. */
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+/** Dataset tags accepted from the batch-evaluation harness. */
+const VALID_DATASET_IDS = ["A", "B"];
+
+/** Few-shot pool. Named as in section 4.4.3 of the thesis. */
+const FEW_SHOT_COLLECTION = "data_fewshot";
 
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -54,26 +89,49 @@ async function loadConfig() {
   return normalizeConfig(data, (message) => logger.warn(message));
 }
 
-function buildInstructionText(hasExamples) {
-  const base = `Anda adalah sistem klasifikasi sampah untuk kampus Universitas Gadjah Mada (UGM).
-Klasifikasikan gambar sampah ke dalam TEPAT SATU dari tiga kategori berikut:
+/**
+ * Blok A of the prompt — the system instruction.
+ *
+ * Transcribed from Tabel 4.1 of the thesis, which is the approved design; the
+ * category scopes and the four reasoning steps are reproduced verbatim so the
+ * running system and the document that describes it cannot drift apart. Note
+ * that tissue belongs to "organik" here, exactly as the Rector's circular
+ * quoted in Bab I has it.
+ *
+ * @return {string} Blok A.
+ */
+function buildInstructionText() {
+  return `Bertindaklah sebagai ahli klasifikasi sampah dan teknik lingkungan. Tugas Anda adalah menganalisis gambar input secara visual dan mengkategorikannya ke dalam salah satu dari tiga label kategori berikut: "organik", "recycle", atau "residu".
 
-1. "Organik Terpilah" — sisa makanan, kulit buah, daun, dan material yang terurai secara alami.
-2. "Recycle Bersih Terpilah" — botol plastik, kertas, kardus, kaleng, atau kaca yang BERSIH, kering, dan bernilai daur ulang.
-3. "Residu Terpilah" — sampah campuran atau kotor yang tidak dapat didaur ulang: kemasan sachet, popok, tisu, puntung rokok, styrofoam kotor, plastik kresek kotor, masker.
+Definisi Kategori & Label:
 
-Aturan penting:
-- Material daur ulang yang KOTOR atau berminyak termasuk "Residu Terpilah", bukan "Recycle Bersih Terpilah".
-- Nilai confidence_score harus antara 0.0 dan 1.0 dan mencerminkan keyakinan Anda yang sebenarnya.
-- Jika objek tidak jelas, ambigu, atau bukan sampah, berikan confidence_score yang rendah.
-- reasoning maksimal satu kalimat singkat dalam Bahasa Indonesia.`;
+1. Label: "organik" (Sampah Organik Terpilah)
+Definisi: Sampah yang mudah terurai secara alami.
+Cakupan: Sisa makanan, potongan ranting/daun, kulit buah, dan tisu.
+Pengecualian: Tidak termasuk bungkus makanan dari kertas berlapis plastik.
 
-  if (hasExamples) {
-    return `${base}
+2. Label: "recycle" (Sampah Recycle Bersih Terpilah)
+Definisi: Sampah anorganik yang memiliki nilai ekonomi tinggi dan wajib dalam kondisi bersih/kering.
+Cakupan: Botol plastik, kertas HVS/koran bersih, kaleng logam, botol kaca, kardus, dan kemasan plastik keras.
 
-Beberapa contoh di bawah ini sudah divalidasi oleh manusia. Pelajari pola tersebut, lalu klasifikasikan gambar utama di bagian akhir.`;
-  }
-  return base;
+3. Label: "residu" (Sampah Residu Terpilah)
+Definisi: Sampah anorganik yang tidak memiliki nilai ekonomi, sulit didaur ulang, atau tercemar/kotor.
+Cakupan: Kemasan sachet (multilayer), masker medis, pembalut/diapers, kantong plastik kotor, styrofoam, puntung rokok, dan bungkus makanan berminyak.
+
+Logika Penalaran:
+
+1. Analisis material objek. Apakah bersifat organik/hayati/mudah busuk? Jika YA maka labelnya "organik".
+2. Jika TIDAK, periksa kebersihan dan nilai jualnya. Apakah bersih, kering, laku di bank sampah, dan bisa didaur ulang? Jika YA maka labelnya "recycle".
+3. Jika kotor, berminyak, berupa sachet, atau campuran material sulit pisah? Jika YA maka "residu".
+4. Pastikan jawaban label diambil dari 3 kategori itu, jangan menyebut hal/kategori di luar ini. Cari yang mendekati di antara 3 kategori ini jika menurutmu sebenarnya tidak ada yang masuk.
+
+Penjelasan Confidence Score:
+
+Nilai 0.00 - 1.00 yang merepresentasikan seberapa yakin Kamu terhadap prediksi visual tersebut.
+- Nilai mendekati 1.00: Gambar sangat jelas, objek tunggal, dan ciri visual sangat khas sesuai kategori.
+- Nilai mendekati 0.00: Gambar buram, objek tumpang tindih, atau ambigu.
+
+Sertakan juga "reasoning": satu kalimat singkat dalam Bahasa Indonesia yang menjelaskan dasar keputusan Anda.`;
 }
 
 /**
@@ -99,29 +157,66 @@ async function downloadImage(storagePath) {
 }
 
 /**
- * Fetches up to `count` human-validated few-shot examples, skipping any whose
- * backing image can no longer be read.
- * @param {number} count Max number of examples.
+ * Fetches human-validated few-shot examples for Blok B.
+ *
+ * Section 4.4.3 asks for examples drawn *at random, one per category*, because
+ * the point of the escalation is to make the model reason comparatively across
+ * the three classes. Taking the most recent N instead — the obvious
+ * implementation — can hand the model three residu examples and turn Blok B
+ * into a bias rather than a comparison.
+ *
+ * Categories with no validated example yet are simply skipped, so the pool
+ * degrades gracefully while it is still filling up.
+ *
+ * @param {number} count Max number of examples; distributed across categories.
  * @return {Promise<Array<{base64: string, mimeType: string, label: string}>>}
  */
 async function fetchExamples(count) {
   if (count <= 0) return [];
 
-  let snap;
-  try {
-    snap = await db
-        .collection("few_shot_data")
-        .where("validated", "==", true)
-        .orderBy("createdAt", "desc")
-        .limit(count)
-        .get();
-  } catch (err) {
-    logger.error("Failed to query few_shot_data", err);
-    return [];
+  // Round-robin the budget over the categories: 3 examples over 3 categories is
+  // one each, and an unusual few_shot_count of 5 becomes 2/2/1.
+  const perCategory = new Map(CATEGORIES.map((label, i) => [
+    label,
+    Math.floor(count / CATEGORIES.length) + (i < count % CATEGORIES.length ? 1 : 0),
+  ]));
+
+  const picked = [];
+  for (const label of CATEGORIES) {
+    const want = perCategory.get(label);
+    if (want <= 0) continue;
+
+    let snap;
+    try {
+      // Sampling by a random cursor over a stored random key: Firestore has no
+      // ORDER BY RANDOM(), and reading the whole pool to shuffle in memory
+      // would grow linearly with every correction users submit.
+      snap = await db
+          .collection(FEW_SHOT_COLLECTION)
+          .where("validated", "==", true)
+          .where("label", "==", label)
+          .where("randomKey", ">=", Math.random())
+          .orderBy("randomKey")
+          .limit(want)
+          .get();
+      if (snap.empty) {
+        snap = await db
+            .collection(FEW_SHOT_COLLECTION)
+            .where("validated", "==", true)
+            .where("label", "==", label)
+            .orderBy("randomKey")
+            .limit(want)
+            .get();
+      }
+    } catch (err) {
+      logger.error(`Failed to query ${FEW_SHOT_COLLECTION} for "${label}"`, err);
+      continue;
+    }
+    picked.push(...snap.docs);
   }
 
   const examples = [];
-  for (const doc of snap.docs) {
+  for (const doc of picked) {
     const { storagePath, label } = doc.data();
     if (!storagePath || !CATEGORIES.includes(label)) continue;
     try {
@@ -147,10 +242,23 @@ function toHttpsError(err) {
   const message = String((err && err.message) || "");
 
   if (status === 429 || /RESOURCE_EXHAUSTED|quota|credits are depleted/i.test(message)) {
-    logger.error("Gemini quota/credits exhausted", err);
+    // On Vertex this is a project quota ceiling or a disabled billing account,
+    // not the prepaid-credit wall the AI Studio key used to hit.
+    logger.error("Vertex AI quota exhausted or billing inactive", err);
     return new HttpsError(
         "resource-exhausted",
         "Kuota layanan AI sedang habis. Silakan hubungi pengelola aplikasi.",
+    );
+  }
+  if (status === 403 || /PERMISSION_DENIED|aiplatform\.googleapis\.com/i.test(message)) {
+    logger.error(
+        "Vertex AI rejected the call — check that aiplatform.googleapis.com is " +
+        "enabled and the runtime service account holds roles/aiplatform.user",
+        err,
+    );
+    return new HttpsError(
+        "failed-precondition",
+        "Layanan AI belum dikonfigurasi dengan benar. Silakan hubungi pengelola aplikasi.",
     );
   }
   if (status === 404 && /model/i.test(message)) {
@@ -177,29 +285,39 @@ function toHttpsError(err) {
  * @return {Promise<{label: string, confidenceScore: number, reasoning: (string|null)}>}
  */
 async function runGemini({ ai, image, examples }) {
-  const parts = [{ text: buildInstructionText(examples.length > 0) }];
+  // Blok A — system instruction.
+  const parts = [{ text: buildInstructionText() }];
 
-  examples.forEach((ex, i) => {
-    parts.push({ text: `Contoh tervalidasi ${i + 1} — kategori benar: "${ex.label}"` });
-    parts.push({ inlineData: { mimeType: ex.mimeType, data: ex.base64 } });
-  });
+  // Blok B — validated reference examples, present only on an escalated pass.
+  if (examples.length > 0) {
+    parts.push({ text: "--- MULAI CONTOH REFERENSI ---" });
+    examples.forEach((ex, i) => {
+      parts.push({ text: `Contoh ${i + 1}:` });
+      parts.push({ inlineData: { mimeType: ex.mimeType, data: ex.base64 } });
+      parts.push({ text: `-> Label: "${ex.label}"` });
+    });
+    parts.push({ text: "--- SELESAI CONTOH REFERENSI ---" });
+  }
 
-  parts.push({
-    text: examples.length > 0 ?
-      "Sekarang klasifikasikan gambar BARU berikut (bukan salah satu contoh di atas):" :
-      "Klasifikasikan gambar berikut:",
-  });
+  // Blok C — the user's image.
+  parts.push({ text: "Sekarang, berikan analisis untuk gambar berikut sesuai format:" });
   parts.push({ inlineData: { mimeType: image.mimeType, data: image.base64 } });
+  parts.push({
+    text: "Klasifikasikan sampah ini berdasarkan instruksi yang telah diberikan.",
+  });
 
+  const startedAt = Date.now();
   const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
+    model: MODEL_ID,
     contents: [{ role: "user", parts }],
     config: {
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA,
       temperature: 0.2,
+      thinkingConfig: { thinkingLevel: THINKING_LEVEL },
     },
   });
+  const latencyMs = Date.now() - startedAt;
 
   const raw = response && response.text;
   if (!raw) {
@@ -227,11 +345,23 @@ async function runGemini({ ai, image, examples }) {
     label: parsed.label,
     confidenceScore: clamp(Number(parsed.confidence_score) || 0, 0, 1),
     reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning.trim() : null,
+    latencyMs,
+    usage: response.usageMetadata || null,
   };
 }
 
-/** Shapes a stored classification doc into the callable's response. */
+/**
+ * Shapes a stored classification doc into the callable's response.
+ *
+ * `confidenceThreshold` is part of the contract on purpose: without it the app
+ * has no way to know when a score counts as low, and the "Prediksi Tingkat
+ * Keyakinan Rendah" fail-safe promised in section 4.4.3 cannot be rendered.
+ * @param {string} logId Scan document id.
+ * @param {object} data Stored document data.
+ * @return {object} Callable response payload.
+ */
 function toResponse(logId, data) {
+  const usage = data.usageTotals || {};
   return {
     logId,
     label: data.predictedLabel,
@@ -241,8 +371,13 @@ function toResponse(logId, data) {
     usedFewShot: data.usedFewShot,
     fewShotExampleCount: data.fewShotExampleCount || 0,
     mode: data.classificationMode,
+    confidenceThreshold: data.confidenceThreshold ?? null,
     escalated: data.escalated || false,
     zeroShotConfidence: data.zeroShotConfidence,
+    modelId: data.modelId || null,
+    latencyMs: data.latencyMs ?? null,
+    totalTokens: usage.totalTokens ?? null,
+    thoughtsTokens: usage.thoughtsTokens ?? null,
     totalScans: data.totalScansAfter || null,
   };
 }
@@ -250,17 +385,19 @@ function toResponse(logId, data) {
 exports.classifyWaste = onCall(
     {
       region: REGION,
-      secrets: [geminiApiKey],
       timeoutSeconds: 120,
       memory: "512MiB",
     },
     async (request) => {
+      const requestStartedAt = Date.now();
+
       if (!request.auth) {
         throw new HttpsError("unauthenticated", "Anda harus login untuk melakukan scan.");
       }
       const uid = request.auth.uid;
 
-      const { storagePath, imageUrl, clientRequestId } = request.data || {};
+      const { storagePath, imageUrl, clientRequestId, groundTruth, datasetId } =
+        request.data || {};
 
       if (typeof storagePath !== "string" || !storagePath) {
         throw new HttpsError("invalid-argument", "storagePath wajib diisi.");
@@ -272,6 +409,18 @@ exports.classifyWaste = onCall(
       }
       if (typeof clientRequestId !== "string" || !/^[A-Za-z0-9_-]{6,128}$/.test(clientRequestId)) {
         throw new HttpsError("invalid-argument", "clientRequestId tidak valid.");
+      }
+      // Optional evaluation metadata, supplied only by the batch harness. The
+      // app never sends these; a scan without them simply has no ground truth,
+      // which is what makes the confusion matrix computable for dataset runs
+      // and absent for ordinary user scans.
+      if (groundTruth !== undefined && groundTruth !== null &&
+          !CATEGORY_IDS.includes(groundTruth)) {
+        throw new HttpsError("invalid-argument", "groundTruth tidak valid.");
+      }
+      if (datasetId !== undefined && datasetId !== null &&
+          !VALID_DATASET_IDS.includes(datasetId)) {
+        throw new HttpsError("invalid-argument", "datasetId tidak valid.");
       }
 
       const logRef = db.collection("users").doc(uid).collection("classifications").doc(clientRequestId);
@@ -294,7 +443,16 @@ exports.classifyWaste = onCall(
 
       let result;
       try {
-        const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+        // Vertex AI rather than the Gemini Developer API: the function
+        // authenticates with its own runtime service account, so there is no
+        // API key to store, rotate, or leak, and Vertex does not use the
+        // uploaded images to improve Google's products — which matters because
+        // these are the study's primary research data.
+        const ai = new GoogleGenAI({
+          vertexai: true,
+          project: PROJECT_ID,
+          location: VERTEX_LOCATION,
+        });
         result = await classify({
           mode: config.mode,
           threshold: config.threshold,
@@ -324,6 +482,28 @@ exports.classifyWaste = onCall(
         corrected: false,
         correctedLabel: null,
         correctedCategory: null,
+
+        // --- evaluation instrumentation (Bab 3.6.2 and 4.6) ---
+        // Which model and thinking setting produced this row. Recorded rather
+        // than assumed, so a mid-study change is visible in the data instead of
+        // silently mixing two populations.
+        modelId: MODEL_ID,
+        thinkingLevel: THINKING_LEVEL,
+        provider: "vertex-ai",
+        vertexLocation: VERTEX_LOCATION,
+        // Latency: the model's own time, and the whole callable including
+        // download and Firestore work. The thesis reports inference time; the
+        // end-to-end figure is what the user actually waits for.
+        inferenceLatencyMs: result.inferenceLatencyMs ?? null,
+        latencyMs: Date.now() - requestStartedAt,
+        // Token usage, summed and per pass. Equation 3.11 needs input and
+        // output separately, and thinking tokens bill as output.
+        usageTotals: result.usageTotals || null,
+        passes: result.passes || [],
+        inferenceCount: result.inferenceCount || 1,
+        // Ground truth is present only for batch-harness rows.
+        groundTruth: groundTruth || null,
+        datasetId: datasetId || null,
         timestamp: FieldValue.serverTimestamp(),
       };
 
@@ -390,7 +570,7 @@ exports.submitCorrection = onCall(
       const statsRef = db.collection("users").doc(uid);
       // Deterministic id: correcting the same scan twice overwrites one entry
       // rather than appending a duplicate example to the few-shot pool.
-      const fewShotRef = db.collection("few_shot_data").doc(`${uid}_${logId}`);
+      const fewShotRef = db.collection(FEW_SHOT_COLLECTION).doc(`${uid}_${logId}`);
 
       await db.runTransaction(async (tx) => {
         const logSnap = await tx.get(logRef);
@@ -414,6 +594,9 @@ exports.submitCorrection = onCall(
               sourceLogId: logId,
               originalPrediction: log.predictedLabel,
               originalConfidence: log.confidenceScore,
+              // Sort key that lets fetchExamples draw a random example per
+              // category with a bounded read instead of scanning the pool.
+              randomKey: Math.random(),
               createdAt: FieldValue.serverTimestamp(),
             },
             { merge: true },

@@ -6,11 +6,17 @@
  * making can be tested deterministically without network access or quota.
  */
 
-/** Labels Gemini is prompted to return, mapped to stored category ids. */
+/**
+ * Labels Gemini is prompted to return, mapped to stored category ids.
+ *
+ * The label strings are fixed by Tabel 4.1 of the thesis (Blok A), which is the
+ * approved design document — keep them byte-identical to it, and to
+ * `classificationLabel` in lib/models/waste_category.dart.
+ */
 const CATEGORY_TO_ID = {
-  "Organik Terpilah": "organic",
-  "Recycle Bersih Terpilah": "recyclable",
-  "Residu Terpilah": "residual",
+  "organik": "organic",
+  "recycle": "recyclable",
+  "residu": "residual",
 };
 const CATEGORIES = Object.keys(CATEGORY_TO_ID);
 const CATEGORY_IDS = Object.values(CATEGORY_TO_ID);
@@ -73,9 +79,16 @@ function normalizeConfig(data, warn = () => {}) {
  * and a few-shot re-inference happens only when that first confidence lands
  * below the configured threshold.
  *
+ * Every inference pass is recorded in `passes` with its own latency and token
+ * usage, and the totals are summed across passes. Section 4.6 of the thesis
+ * compares the cost of an escalated scan against a plain one, which is only
+ * answerable if each pass is measured separately rather than in aggregate.
+ *
  * @param {object} args
- * @param {function(Array):Promise<object>} args.runInference Called with the
- *   few-shot examples to ground the prompt with (empty array = zero-shot).
+ * @param {function(Array, string):Promise<object>} args.runInference Called with
+ *   the few-shot examples to ground the prompt with (empty array = zero-shot)
+ *   and a label for the pass. Must resolve to `{label, confidenceScore,
+ *   reasoning, latencyMs, usage}`.
  * @param {function(number):Promise<Array>} args.fetchExamples Loads validated
  *   examples; may return fewer than requested.
  * @param {string} args.mode
@@ -84,33 +97,69 @@ function normalizeConfig(data, warn = () => {}) {
  * @return {Promise<object>} final result plus a trace of what actually ran.
  */
 async function classify({ runInference, fetchExamples, mode, threshold, fewShotCount }) {
-  if (mode === "few-shot") {
-    const examples = await fetchExamples(fewShotCount);
-    const result = await runInference(examples);
+  const passes = [];
+
+  /**
+   * Runs one pass and records it in the trace.
+   * @param {Array} examples Few-shot examples (empty = zero-shot prompt).
+   * @param {string} kind Pass label kept in the trace.
+   * @return {Promise<object>} The pass result.
+   */
+  async function pass(examples, kind) {
+    const result = await runInference(examples, kind);
+    passes.push({
+      kind,
+      label: result.label,
+      confidenceScore: result.confidenceScore,
+      exampleCount: examples.length,
+      latencyMs: result.latencyMs ?? null,
+      ...totalsOf(result.usage),
+    });
+    return result;
+  }
+
+  /**
+   * Builds the aggregate returned to the caller.
+   * @param {object} result Winning pass result.
+   * @param {object} extra Trace fields.
+   * @return {object}
+   */
+  function finish(result, extra) {
     return {
       ...result,
+      ...extra,
+      passes,
+      inferenceCount: passes.length,
+      usageTotals: sumUsage(passes),
+      inferenceLatencyMs: passes.reduce((sum, p) => sum + (p.latencyMs || 0), 0),
+    };
+  }
+
+  if (mode === "few-shot") {
+    const examples = await fetchExamples(fewShotCount);
+    const result = await pass(examples, "few-shot");
+    return finish(result, {
       usedFewShot: examples.length > 0,
       fewShotExampleCount: examples.length,
       zeroShotLabel: null,
       zeroShotConfidence: null,
       escalated: false,
-    };
+    });
   }
 
-  const zeroShot = await runInference([]);
+  const zeroShot = await pass([], "zero-shot");
   const base = {
     zeroShotLabel: zeroShot.label,
     zeroShotConfidence: zeroShot.confidenceScore,
   };
 
   if (mode === "zero-shot" || zeroShot.confidenceScore >= threshold) {
-    return {
-      ...zeroShot,
+    return finish(zeroShot, {
       ...base,
       usedFewShot: false,
       fewShotExampleCount: 0,
       escalated: false,
-    };
+    });
   }
 
   // --- selective escalation ---
@@ -118,23 +167,57 @@ async function classify({ runInference, fetchExamples, mode, threshold, fewShotC
   if (examples.length === 0) {
     // Nothing validated to escalate with yet: keep the zero-shot answer rather
     // than pretending a few-shot pass happened.
-    return {
-      ...zeroShot,
+    return finish(zeroShot, {
       ...base,
       usedFewShot: false,
       fewShotExampleCount: 0,
       escalated: true,
-    };
+    });
   }
 
-  const reRun = await runInference(examples);
-  return {
-    ...reRun,
+  const reRun = await pass(examples, "few-shot");
+  return finish(reRun, {
     ...base,
     usedFewShot: true,
     fewShotExampleCount: examples.length,
     escalated: true,
+  });
+}
+
+/**
+ * Flattens one response's usage into the token fields stored per pass.
+ *
+ * `thoughtsTokenCount` is billed as output on Gemini 3.x and routinely dwarfs
+ * the visible answer, so it is kept as its own column rather than folded into
+ * a single total — equation 3.11 of the thesis cannot be evaluated otherwise.
+ * @param {object} usage Raw `usageMetadata` from the model, if any.
+ * @return {{promptTokens: number, thoughtsTokens: number, outputTokens: number, totalTokens: number}}
+ */
+function totalsOf(usage) {
+  const u = usage || {};
+  return {
+    promptTokens: Number(u.promptTokenCount) || 0,
+    thoughtsTokens: Number(u.thoughtsTokenCount) || 0,
+    outputTokens: Number(u.candidatesTokenCount) || 0,
+    totalTokens: Number(u.totalTokenCount) || 0,
   };
+}
+
+/**
+ * Sums the per-pass token counts across every inference a scan required.
+ * @param {Array<object>} passes Recorded passes.
+ * @return {{promptTokens: number, thoughtsTokens: number, outputTokens: number, totalTokens: number}}
+ */
+function sumUsage(passes) {
+  return passes.reduce(
+      (acc, p) => ({
+        promptTokens: acc.promptTokens + (p.promptTokens || 0),
+        thoughtsTokens: acc.thoughtsTokens + (p.thoughtsTokens || 0),
+        outputTokens: acc.outputTokens + (p.outputTokens || 0),
+        totalTokens: acc.totalTokens + (p.totalTokens || 0),
+      }),
+      { promptTokens: 0, thoughtsTokens: 0, outputTokens: 0, totalTokens: 0 },
+  );
 }
 
 module.exports = {
@@ -148,4 +231,6 @@ module.exports = {
   clamp,
   normalizeConfig,
   classify,
+  totalsOf,
+  sumUsage,
 };

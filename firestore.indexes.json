@@ -1,11 +1,20 @@
 {
   "indexes": [
     {
-      "collectionGroup": "few_shot_data",
+      "collectionGroup": "data_fewshot",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "validated", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "label", "order": "ASCENDING" },
+        { "fieldPath": "randomKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "classifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "datasetId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     }
   ],
