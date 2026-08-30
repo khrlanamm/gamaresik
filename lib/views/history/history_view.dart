@@ -154,7 +154,7 @@ class _HistoryViewState extends State<HistoryView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category.classificationLabel,
+                  category.officialName,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 2),

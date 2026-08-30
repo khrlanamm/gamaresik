@@ -72,6 +72,11 @@ class FakeBackend implements GamaBackend {
         mode: 'selective',
         escalated: false,
         zeroShotConfidence: 0.87,
+        confidenceThreshold: 0.5,
+        modelId: 'gemini-3.6-flash',
+        latencyMs: 1800,
+        totalTokens: 1540,
+        thoughtsTokens: 300,
         totalScans: 1,
       );
 

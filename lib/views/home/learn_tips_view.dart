@@ -150,7 +150,7 @@ class LearnTipsView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    category.classificationLabel,
+                    category.officialName,
                     style: const TextStyle(
                       color: AppTheme.navyPrimary,
                       fontSize: 18,

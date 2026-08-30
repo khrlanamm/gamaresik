@@ -40,8 +40,27 @@ enum WasteCategory {
   }
 
   /// The exact label string the classifyWaste Cloud Function's Gemini prompt
-  /// is instructed to return — keep in sync with CATEGORIES in functions/index.js.
+  /// is instructed to return.
+  ///
+  /// Fixed by Tabel 4.1 of the thesis (Blok A) — keep in sync with
+  /// CATEGORY_TO_ID in functions/classifier.js; a test asserts the two agree.
   String get classificationLabel {
+    switch (this) {
+      case WasteCategory.organic:
+        return 'organik';
+      case WasteCategory.recyclable:
+        return 'recycle';
+      case WasteCategory.residual:
+        return 'residu';
+    }
+  }
+
+  /// The category's official name in the UGM Rector's circular.
+  ///
+  /// Kept apart from [classificationLabel]: that one is the model's output
+  /// vocabulary and is deliberately terse, while this is what people read on
+  /// screen and on the bins themselves.
+  String get officialName {
     switch (this) {
       case WasteCategory.organic:
         return 'Organik Terpilah';
@@ -128,13 +147,13 @@ enum WasteCategory {
     switch (this) {
       case WasteCategory.organic:
         return 'Material yang dapat terurai secara alami seperti sisa makanan, '
-            'kulit buah, dan daun kering. Diolah lebih lanjut menjadi kompos.';
+            'kulit buah, daun kering, dan tisu. Diolah lebih lanjut menjadi kompos.';
       case WasteCategory.recyclable:
         return 'Material non-organik bernilai daur ulang seperti botol plastik, '
             'kertas, dan kardus — wajib dalam kondisi bersih dan kering.';
       case WasteCategory.residual:
         return 'Material sisa yang tidak dapat didaur ulang seperti kemasan '
-            'sachet, bungkus kotor berminyak, tisu, dan masker.';
+            'sachet, bungkus kotor berminyak, styrofoam, dan masker.';
     }
   }
 
@@ -163,9 +182,9 @@ enum WasteCategory {
   List<String> get sampleItems {
     switch (this) {
       case WasteCategory.organic:
-        return ['Sisa makanan', 'Kulit buah', 'Sayuran', 'Daun kering', 'Ampas kopi'];
+        return ['Sisa makanan', 'Kulit buah', 'Ranting/daun', 'Tisu', 'Ampas kopi'];
       case WasteCategory.recyclable:
-        return ['Botol plastik', 'Kertas', 'Kardus', 'Kaleng logam', 'Botol kaca'];
+        return ['Botol plastik', 'Kertas HVS', 'Kardus', 'Kaleng logam', 'Botol kaca'];
       case WasteCategory.residual:
         return ['Kemasan sachet', 'Bungkus berminyak', 'Masker', 'Popok', 'Styrofoam'];
     }

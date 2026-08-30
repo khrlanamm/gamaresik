@@ -127,7 +127,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                 ),
                 const SizedBox(height: 36),
                 Text(
-                  category.classificationLabel,
+                  category.officialName,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),

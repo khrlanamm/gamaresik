@@ -44,7 +44,7 @@ ScanRecord recordWith({
   return ScanRecord(
     id: id,
     category: category,
-    predictedLabel: category.classificationLabel,
+    predictedLabel: category.officialName,
     confidenceScore: confidence,
     reasoning: 'alasan',
     imageUrl: null,
@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final category in WasteCategory.values) {
-        expect(find.text(category.classificationLabel), findsOneWidget);
+        expect(find.text(category.officialName), findsOneWidget);
         expect(find.text(category.binLabel), findsOneWidget);
       }
     });
@@ -186,8 +186,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // The human correction must win over the model's original guess.
-      expect(find.text(WasteCategory.residual.classificationLabel), findsOneWidget);
-      expect(find.text(WasteCategory.organic.classificationLabel), findsNothing);
+      expect(find.text(WasteCategory.residual.officialName), findsOneWidget);
+      expect(find.text(WasteCategory.organic.officialName), findsNothing);
       expect(find.text('Dikoreksi'), findsOneWidget);
     });
 
@@ -269,7 +269,7 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final category in WasteCategory.values) {
-        expect(find.text(category.classificationLabel), findsOneWidget);
+        expect(find.text(category.officialName), findsOneWidget);
         expect(find.text(category.binLabel), findsOneWidget);
       }
     });

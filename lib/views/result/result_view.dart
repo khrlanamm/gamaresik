@@ -6,6 +6,7 @@ import '../../models/classification_result.dart';
 import '../../models/waste_category.dart';
 import '../../services/firebase_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/formatters.dart';
 import '../../widgets/gama_header.dart';
 
 enum _Phase { uploading, classifying, done, error }
@@ -313,6 +314,10 @@ class _ResultViewState extends State<ResultView> {
             ],
           ),
         ),
+        if (!_corrected && result.isLowConfidence) ...[
+          const SizedBox(height: 20),
+          _buildLowConfidenceWarning(result),
+        ],
         const SizedBox(height: 24),
         _buildBinCard(category),
         const SizedBox(height: 24),
@@ -331,6 +336,61 @@ class _ResultViewState extends State<ResultView> {
         ElevatedButton(onPressed: _finish, child: const Text('Kembali ke Beranda')),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  /// The fail-safe from section 4.4.3.
+  ///
+  /// When the score is still under the threshold after a selective few-shot
+  /// re-inference, the prediction is shown anyway — refusing to answer helps
+  /// nobody standing in front of three bins — but it is labelled as uncertain
+  /// and the user is pushed towards the correction button, which is also what
+  /// grows the validated example pool.
+  Widget _buildLowConfidenceWarning(ClassificationResult result) {
+    final threshold = result.confidenceThreshold;
+    final thresholdText =
+        threshold == null ? '' : ' (ambang batas ${formatConfidence(threshold)})';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: const Color(0xFFE0A32A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 22, color: Color(0xFF9A6B04)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Prediksi Tingkat Keyakinan Rendah',
+                  style: TextStyle(
+                    color: Color(0xFF7A5503),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Keyakinan model hanya ${result.confidencePercentText}$thresholdText. '
+                  'Mohon periksa kembali sendiri sebelum membuang, dan laporkan '
+                  'lewat tombol di bawah jika kategorinya keliru.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF7A5503),
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

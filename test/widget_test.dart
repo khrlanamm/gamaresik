@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:gamaresik/models/achievement.dart';
+import 'package:gamaresik/models/classification_result.dart';
 import 'package:gamaresik/models/waste_category.dart';
 import 'package:gamaresik/utils/app_theme.dart';
 import 'package:gamaresik/views/auth/onboarding_view.dart';
@@ -25,10 +26,12 @@ void main() {
     });
 
     test('classification labels match the vocabulary the backend prompts for', () {
-      // These strings are the contract with functions/index.js CATEGORY_TO_ID.
-      expect(WasteCategory.organic.classificationLabel, 'Organik Terpilah');
-      expect(WasteCategory.recyclable.classificationLabel, 'Recycle Bersih Terpilah');
-      expect(WasteCategory.residual.classificationLabel, 'Residu Terpilah');
+      // These strings are the contract with CATEGORY_TO_ID in
+      // functions/classifier.js, and both sides are fixed by Tabel 4.1 of the
+      // thesis — changing one without the other silently breaks every scan.
+      expect(WasteCategory.organic.classificationLabel, 'organik');
+      expect(WasteCategory.recyclable.classificationLabel, 'recycle');
+      expect(WasteCategory.residual.classificationLabel, 'residu');
     });
 
     test('fromClassificationLabel round-trips and falls back safely', () {
@@ -102,7 +105,7 @@ void main() {
         MaterialApp(theme: AppTheme.lightTheme, home: const OnboardingView()),
       );
 
-      expect(find.text(WasteCategory.organic.classificationLabel), findsOneWidget);
+      expect(find.text(WasteCategory.organic.officialName), findsOneWidget);
       expect(find.text(WasteCategory.organic.binLabel), findsOneWidget);
       expect(find.text('Lewati'), findsOneWidget);
       expect(find.text('Selanjutnya'), findsOneWidget);
@@ -116,11 +119,11 @@ void main() {
 
       await tester.tap(find.text('Selanjutnya'));
       await tester.pumpAndSettle();
-      expect(find.text(WasteCategory.recyclable.classificationLabel), findsOneWidget);
+      expect(find.text(WasteCategory.recyclable.officialName), findsOneWidget);
 
       await tester.tap(find.text('Selanjutnya'));
       await tester.pumpAndSettle();
-      expect(find.text(WasteCategory.residual.classificationLabel), findsOneWidget);
+      expect(find.text(WasteCategory.residual.officialName), findsOneWidget);
       // Last page swaps the CTA to the finish label.
       expect(find.text('Mulai'), findsOneWidget);
       expect(find.text('Selanjutnya'), findsNothing);
@@ -138,6 +141,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('ClassificationResult.isLowConfidence', () {
+    ClassificationResult build({
+      required double confidence,
+      double? threshold,
+    }) {
+      return ClassificationResult(
+        logId: 'scan-1',
+        category: WasteCategory.residual,
+        label: WasteCategory.residual.classificationLabel,
+        confidenceScore: confidence,
+        reasoning: null,
+        usedFewShot: false,
+        fewShotExampleCount: 0,
+        mode: 'selective',
+        escalated: true,
+        zeroShotConfidence: confidence,
+        confidenceThreshold: threshold,
+        modelId: 'gemini-3.6-flash',
+        latencyMs: 1200,
+        totalTokens: 900,
+        thoughtsTokens: 200,
+        totalScans: 1,
+      );
+    }
+
+    test('flags a score below the threshold the backend applied', () {
+      expect(build(confidence: 0.15, threshold: 0.5).isLowConfidence, isTrue);
+    });
+
+    test('a score exactly at the threshold is not low', () {
+      // Matches the backend, which treats >= threshold as sufficient.
+      expect(build(confidence: 0.5, threshold: 0.5).isLowConfidence, isFalse);
+    });
+
+    test('stays silent when the backend reported no threshold', () {
+      // An older response carries no threshold; warning anyway would put copy
+      // on screen the app cannot actually justify.
+      expect(build(confidence: 0.05, threshold: null).isLowConfidence, isFalse);
     });
   });
 }
