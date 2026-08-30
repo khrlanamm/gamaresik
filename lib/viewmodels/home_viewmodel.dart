@@ -1,38 +1,45 @@
 import 'package:flutter/material.dart';
+
+import '../models/achievement.dart';
+import '../models/user_stats.dart';
 import '../models/waste_category.dart';
 import '../services/firebase_service.dart';
 
 class HomeViewModel extends ChangeNotifier {
-  final FirebaseService _firebaseService = FirebaseService();
-  static const List<int> _targets = [50, 100, 200, 500, 1000, 5000, 10000];
+  final GamaBackend _backend;
 
+  HomeViewModel({GamaBackend? backend}) : _backend = backend ?? FirebaseService();
+
+  UserStats _stats = UserStats.empty();
   bool _isLoading = false;
-  int _totalScanned = 0;
-  Map<WasteCategory, int> _categoryCounts = {
-    for (final category in WasteCategory.values) category: 0,
-  };
+  String? _errorMessage;
 
+  UserStats get stats => _stats;
   bool get isLoading => _isLoading;
-  int get totalScanned => _totalScanned;
-  Map<WasteCategory, int> get categoryCounts => _categoryCounts;
+  String? get errorMessage => _errorMessage;
 
-  int get nextTarget {
-    for (final target in _targets) {
-      if (_totalScanned < target) return target;
-    }
-    return _targets.last;
-  }
+  int get totalScanned => _stats.totalScans;
+  Map<WasteCategory, int> get categoryCounts => _stats.categoryCounts;
 
-  double get progress => nextTarget == 0 ? 0.0 : (_totalScanned / nextTarget).clamp(0.0, 1.0);
+  AchievementProgress get achievementProgress =>
+      AchievementProgress.of(_stats.totalScans);
 
-  Future<void> fetchTotalScanned() async {
+  /// Reads the server-maintained aggregate counters.
+  ///
+  /// Always clears the loading flag, including on failure — an unhandled throw
+  /// here previously left the home screen spinning forever.
+  Future<void> refresh() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
-    _totalScanned = await _firebaseService.getClassificationCount();
-    _categoryCounts = await _firebaseService.getCategoryCounts();
-
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _stats = await _backend.getUserStats();
+    } catch (e) {
+      _errorMessage = 'Gagal memuat statistik. Tarik ke bawah untuk mencoba lagi.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

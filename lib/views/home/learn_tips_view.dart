@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/waste_category.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/gama_header.dart';
 
 class LearnTipsView extends StatelessWidget {
   const LearnTipsView({super.key});
@@ -11,52 +12,20 @@ class LearnTipsView extends StatelessWidget {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // Header with Navy Gradient
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
-            decoration: const BoxDecoration(
-              gradient: AppTheme.navyGradient,
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Belajar & Tips',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const GamaHeader(title: 'Belajar & Tips'),
           // Content
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(24.0),
               children: [
-                const Text(
+                Text(
                   'Pelajari cara memilah sampah dengan benar sesuai standar pengelolaan sampah Universitas Gadjah Mada.',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 32),
                 // Organik Terpilah
                 _buildSection(
-                  title: 'Organik Terpilah',
-                  color: WasteCategory.organic.color,
-                  icon: WasteCategory.organic.icon,
+                  category: WasteCategory.organic,
                   description:
                       'Sampah organik adalah jenis sampah yang berasal dari sisa makhluk hidup dan sangat mudah membusuk atau terurai secara alami oleh lingkungan. Sampah ini biasanya berasal dari sisa dapur atau sapuan halaman, yang nantinya akan diproses lebih lanjut untuk dijadikan pupuk kompos.',
                   examples: [
@@ -70,9 +39,7 @@ class LearnTipsView extends StatelessWidget {
                 const SizedBox(height: 32),
                 // Recycle Bersih Terpilah
                 _buildSection(
-                  title: 'Recycle Bersih Terpilah',
-                  color: WasteCategory.recyclable.color,
-                  icon: WasteCategory.recyclable.icon,
+                  category: WasteCategory.recyclable,
                   description:
                       'Sampah recycle adalah sampah berbahan non-organik yang masih memiliki nilai ekonomi dan wujudnya dapat didaur ulang menjadi produk baru. Syarat paling penting untuk kategori ini adalah wujud fisik sampah harus dalam keadaan bersih, kering, dan bebas dari kontaminasi sisa makanan maupun minyak.',
                   examples: [
@@ -86,9 +53,7 @@ class LearnTipsView extends StatelessWidget {
                 const SizedBox(height: 32),
                 // Residu Terpilah
                 _buildSection(
-                  title: 'Residu Terpilah',
-                  color: WasteCategory.residual.color,
-                  icon: WasteCategory.residual.icon,
+                  category: WasteCategory.residual,
                   description:
                       'Sampah residu adalah jenis sampah sisa yang sudah tidak memiliki nilai jual, sulit didaur ulang oleh pabrik, atau material recycle yang sudah terlanjur kotor dan berminyak. Kategori ini juga menjadi tempat pembuangan akhir untuk sampah-sampah kebersihan diri.',
                   examples: [
@@ -160,12 +125,11 @@ class LearnTipsView extends StatelessWidget {
   }
 
   Widget _buildSection({
-    required String title,
-    required Color color,
-    required IconData icon,
+    required WasteCategory category,
     required String description,
     required List<String> examples,
   }) {
+    final color = category.color;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,32 +140,51 @@ class LearnTipsView extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
+              child: Icon(category.icon, color: Colors.white, size: 24),
             ),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppTheme.navyPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    category.classificationLabel,
+                    style: const TextStyle(
+                      color: AppTheme.navyPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: 32,
-                  height: 2,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(1),
+                  const SizedBox(height: 6),
+                  // Which bin this ends up in is the point of the whole screen.
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          category.binLabel,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: category.textColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -254,7 +237,7 @@ class LearnTipsView extends StatelessWidget {
                   Text(
                     'Contoh:',
                     style: TextStyle(
-                      color: color,
+                      color: category.textColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
