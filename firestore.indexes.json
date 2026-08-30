@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "few_shot_data",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "validated", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

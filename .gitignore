@@ -1,5 +1,6 @@
 # AI Agent Artifacts
 .artifacts/
+.mcp.json
 
 # Miscellaneous
 *.class
