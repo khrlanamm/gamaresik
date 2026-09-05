@@ -107,22 +107,24 @@ Definisi Kategori & Label:
 
 1. Label: "organik" (Sampah Organik Terpilah)
 Definisi: Sampah yang mudah terurai secara alami.
-Cakupan: Sisa makanan, potongan ranting/daun, kulit buah, dan tisu.
+Cakupan: Sisa makanan, potongan ranting/daun, kulit buah, tisu, dan kemasan berbahan pulp kertas tanpa lapisan plastik seperti tatakan telur.
+Catatan: Tisu tetap masuk kategori ini meskipun sudah terpakai atau terkena minyak dan sisa makanan, sebab bahannya tetap mudah terurai.
 Pengecualian: Tidak termasuk bungkus makanan dari kertas berlapis plastik.
 
 2. Label: "recycle" (Sampah Recycle Bersih Terpilah)
-Definisi: Sampah anorganik yang memiliki nilai ekonomi tinggi dan wajib dalam kondisi bersih/kering.
-Cakupan: Botol plastik, kertas HVS/koran bersih, kaleng logam, botol kaca, kardus, dan kemasan plastik keras.
+Definisi: Sampah anorganik yang memiliki nilai ekonomi tinggi, materialnya masih utuh, dan layak didaur ulang.
+Cakupan: Botol plastik, kertas HVS/koran bersih, kaleng logam, botol kaca, kardus termasuk kotak lipat kecil, dan kemasan plastik keras.
+Catatan: Kotoran yang hanya menempel di permukaan dan masih dapat dibilas, misalnya debu, tanah, atau sisa minuman, tidak menggugurkan kategori ini.
 
 3. Label: "residu" (Sampah Residu Terpilah)
-Definisi: Sampah anorganik yang tidak memiliki nilai ekonomi, sulit didaur ulang, atau tercemar/kotor.
-Cakupan: Kemasan sachet (multilayer), masker medis, pembalut/diapers, kantong plastik kotor, styrofoam, puntung rokok, dan bungkus makanan berminyak.
+Definisi: Sampah anorganik yang tidak memiliki nilai ekonomi, sulit didaur ulang, atau tercemar minyak dan lemak.
+Cakupan: Kemasan sachet (multilayer), masker medis, kapas/kasa bekas, pembalut/diapers, kantong plastik kotor, styrofoam, puntung rokok, dan bungkus makanan berminyak.
 
 Logika Penalaran:
 
 1. Analisis material objek. Apakah bersifat organik/hayati/mudah busuk? Jika YA maka labelnya "organik".
-2. Jika TIDAK, periksa kebersihan dan nilai jualnya. Apakah bersih, kering, laku di bank sampah, dan bisa didaur ulang? Jika YA maka labelnya "recycle".
-3. Jika kotor, berminyak, berupa sachet, atau campuran material sulit pisah? Jika YA maka "residu".
+2. Jika TIDAK, periksa material dan nilai jualnya. Apakah materialnya masih utuh, laku di bank sampah, dan bisa didaur ulang? Kotoran permukaan yang masih bisa dibilas tidak menggugurkannya. Jika YA maka labelnya "recycle".
+3. Jika terkena minyak atau lemak yang meresap ke materialnya, berupa sachet, atau campuran material sulit pisah? Jika YA maka "residu".
 4. Pastikan jawaban label diambil dari 3 kategori itu, jangan menyebut hal/kategori di luar ini. Cari yang mendekati di antara 3 kategori ini jika menurutmu sebenarnya tidak ada yang masuk.
 
 Penjelasan Confidence Score:
