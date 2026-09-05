@@ -62,12 +62,27 @@ const FEW_SHOT_COLLECTION = "data_fewshot";
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
-    label: { type: Type.STRING, enum: CATEGORIES },
-    confidence_score: { type: Type.NUMBER },
+    // Penalaran diminta lebih dulu supaya model menimbang sebelum menilai;
+    // urutan medan pada luaran terstruktur menentukan urutan pembangkitan.
     reasoning: { type: Type.STRING },
+    // Skor dibagi ke KETIGA kategori, bukan satu angka untuk jawaban terpilih.
+    // Pada skor tunggal model hampir selalu menjawab 0,95 atau 0,98 — dua nilai
+    // pada 81 citra — sehingga ambang batas kehilangan resolusi. Membagi 100
+    // poin memaksa model menimbang alternatif dan memunculkan sebaran.
+    skor: {
+      type: Type.OBJECT,
+      properties: {
+        organik: { type: Type.INTEGER },
+        recycle: { type: Type.INTEGER },
+        residu: { type: Type.INTEGER },
+      },
+      required: ["organik", "recycle", "residu"],
+      propertyOrdering: ["organik", "recycle", "residu"],
+    },
+    label: { type: Type.STRING, enum: CATEGORIES },
   },
-  required: ["label", "confidence_score"],
-  propertyOrdering: ["label", "confidence_score", "reasoning"],
+  required: ["skor", "label"],
+  propertyOrdering: ["reasoning", "skor", "label"],
 };
 
 /**
@@ -127,11 +142,15 @@ Logika Penalaran:
 3. Jika terkena minyak atau lemak yang meresap ke materialnya, berupa sachet, atau campuran material sulit pisah? Jika YA maka "residu".
 4. Pastikan jawaban label diambil dari 3 kategori itu, jangan menyebut hal/kategori di luar ini. Cari yang mendekati di antara 3 kategori ini jika menurutmu sebenarnya tidak ada yang masuk.
 
-Penjelasan Confidence Score:
+Penjelasan Skor Keyakinan:
 
-Nilai 0.00 - 1.00 yang merepresentasikan seberapa yakin Kamu terhadap prediksi visual tersebut.
-- Nilai mendekati 1.00: Gambar sangat jelas, objek tunggal, dan ciri visual sangat khas sesuai kategori.
-- Nilai mendekati 0.00: Gambar buram, objek tumpang tindih, atau ambigu.
+Berikan skor untuk KETIGA kategori sekaligus, berupa bilangan bulat yang jumlahnya tepat 100. Skor menyatakan seberapa besar kemungkinan sampah pada gambar termasuk kategori tersebut.
+- Bila sebuah kategori benar-benar tidak mungkin, beri 0.
+- Bila dua kategori sama-sama masuk akal dan gambar tidak cukup untuk memastikan, bagilah mendekati seimbang, misalnya 55 dan 45.
+- Bila satu kategori jelas namun menyisakan sedikit keraguan, misalnya kondisi kebersihan yang tidak terlihat pasti, sisakan poin untuk kategori pesaingnya.
+- Jangan memberi 100 pada satu kategori kecuali kedua kategori lain benar-benar mustahil.
+
+Kemudian isi "label" dengan kategori yang skornya tertinggi.
 
 Sertakan juga "reasoning": satu kalimat singkat dalam Bahasa Indonesia yang menjelaskan dasar keputusan Anda.`;
 }
@@ -338,14 +357,33 @@ async function runGemini({ ai, image, examples }) {
     throw new HttpsError("internal", "Model tidak mengembalikan hasil yang valid.");
   }
 
-  if (!CATEGORIES.includes(parsed.label)) {
-    logger.error("Gemini returned an unexpected label", parsed);
-    throw new HttpsError("internal", "Model mengembalikan kategori yang tidak dikenal.");
+  const skor = parsed.skor || {};
+  const total = CATEGORIES.reduce((n, k) => n + (Number(skor[k]) || 0), 0);
+  if (total <= 0) {
+    logger.error("Gemini returned an unusable score distribution", parsed);
+    throw new HttpsError("internal", "Model tidak mengembalikan hasil yang valid.");
+  }
+  const sebaran = {};
+  CATEGORIES.forEach((k) => {
+    sebaran[k] = (Number(skor[k]) || 0) / total;
+  });
+
+  // Label diambil dari skor tertinggi. Medan "label" model dipakai hanya bila
+  // sepakat dengan skornya; kalau berbeda, skor yang menang karena itulah yang
+  // dipakai menghitung keyakinan.
+  const urut = [...CATEGORIES].sort((a, b) => sebaran[b] - sebaran[a]);
+  const label = urut[0];
+  if (parsed.label && parsed.label !== label) {
+    logger.warn(`Label "${parsed.label}" tidak sesuai skor tertinggi "${label}"`);
   }
 
   return {
-    label: parsed.label,
-    confidenceScore: clamp(Number(parsed.confidence_score) || 0, 0, 1),
+    label,
+    confidenceScore: clamp(sebaran[label], 0, 1),
+    // Selisih dengan kategori runner-up: sinyal keraguan kedua yang tidak
+    // tersedia dari skor tunggal.
+    margin: clamp(sebaran[urut[0]] - sebaran[urut[1]], 0, 1),
+    distribution: sebaran,
     reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning.trim() : null,
     latencyMs,
     usage: response.usageMetadata || null,
@@ -376,6 +414,8 @@ function toResponse(logId, data) {
     confidenceThreshold: data.confidenceThreshold ?? null,
     escalated: data.escalated || false,
     zeroShotConfidence: data.zeroShotConfidence,
+    margin: data.margin ?? null,
+    distribution: data.distribution || null,
     modelId: data.modelId || null,
     latencyMs: data.latencyMs ?? null,
     totalTokens: usage.totalTokens ?? null,
@@ -479,6 +519,12 @@ exports.classifyWaste = onCall(
         escalated: result.escalated,
         zeroShotLabel: result.zeroShotLabel,
         zeroShotConfidence: result.zeroShotConfidence,
+        // Sebaran skor tiga kategori dan selisih dengan runner-up. Margin
+        // adalah sinyal keraguan yang berdiri sendiri dari besaran keyakinan:
+        // skor 0,6 dengan pesaing 0,35 jauh lebih goyah daripada 0,6 dengan
+        // dua pesaing 0,2.
+        distribution: result.distribution || null,
+        margin: result.margin ?? null,
         imageUrl: typeof imageUrl === "string" ? imageUrl : null,
         storagePath,
         corrected: false,
