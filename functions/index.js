@@ -415,6 +415,10 @@ function toResponse(logId, data) {
     mode: data.classificationMode,
     confidenceThreshold: data.confidenceThreshold ?? null,
     escalated: data.escalated || false,
+    // Label pass pertama ikut dikembalikan supaya sebuah pengujian selective
+    // dapat sekaligus melaporkan akurasi zero-shot pada citra yang sama persis.
+    // Tanpa ini, membandingkan kedua mode menuntut dua kali pemanggilan penuh.
+    zeroShotLabel: data.zeroShotLabel ?? null,
     zeroShotConfidence: data.zeroShotConfidence,
     margin: data.margin ?? null,
     distribution: data.distribution || null,
