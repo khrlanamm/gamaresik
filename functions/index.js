@@ -129,16 +129,18 @@ Pengecualian: Tidak termasuk bungkus makanan dari kertas berlapis plastik.
 2. Label: "recycle" (Sampah Recycle Bersih Terpilah)
 Definisi: Sampah anorganik yang memiliki nilai ekonomi tinggi, materialnya masih utuh, dan layak didaur ulang.
 Cakupan: Botol plastik, kertas HVS/koran bersih, kaleng logam, botol kaca, kardus termasuk kotak lipat kecil, dan kemasan plastik keras.
-Catatan: Kotoran yang hanya menempel di permukaan dan masih dapat dibilas, misalnya debu, tanah, atau sisa minuman, tidak menggugurkan kategori ini.
+Catatan: Debu atau tanah yang menempel di permukaan tidak menggugurkan kategori ini, sepanjang wadahnya sudah kosong dan kering.
 
 3. Label: "residu" (Sampah Residu Terpilah)
 Definisi: Sampah anorganik yang tidak memiliki nilai ekonomi, sulit didaur ulang, atau tercemar minyak dan lemak.
-Cakupan: Kemasan sachet (multilayer), masker medis, kapas/kasa bekas, pembalut/diapers, kantong plastik kotor, styrofoam, puntung rokok, dan bungkus makanan berminyak.
+Cakupan: Kemasan sachet (multilayer), kemasan karton minuman berlapis, plastik lembaran atau kemasan lentur, peralatan makan sekali pakai seperti sendok, garpu, dan sedotan plastik, masker medis, kapas/kasa bekas, pembalut/diapers, kantong plastik kotor, styrofoam, puntung rokok, dan bungkus makanan berminyak.
 
 Logika Penalaran:
 
+Nilai kondisi objek sebagaimana terlihat pada gambar, bukan kondisi setelah dicuci atau dibersihkan. Wadah yang masih berisi atau berlumur sisa makanan dan minuman termasuk residu, meskipun materialnya sendiri sebenarnya dapat didaur ulang.
+
 1. Analisis material objek. Apakah bersifat organik/hayati/mudah busuk? Jika YA maka labelnya "organik".
-2. Jika TIDAK, periksa material dan nilai jualnya. Apakah materialnya masih utuh, laku di bank sampah, dan bisa didaur ulang? Kotoran permukaan yang masih bisa dibilas tidak menggugurkannya. Jika YA maka labelnya "recycle".
+2. Jika TIDAK, periksa material dan nilai jualnya. Apakah berupa botol, kaleng, kaca, kertas/kardus, atau kemasan plastik KERAS yang sudah kosong dan kering? Plastik lembaran dan peralatan makan sekali pakai tidak termasuk. Jika YA maka labelnya "recycle".
 3. Jika terkena minyak atau lemak yang meresap ke materialnya, berupa sachet, atau campuran material sulit pisah? Jika YA maka "residu".
 4. Pastikan jawaban label diambil dari 3 kategori itu, jangan menyebut hal/kategori di luar ini. Cari yang mendekati di antara 3 kategori ini jika menurutmu sebenarnya tidak ada yang masuk.
 
