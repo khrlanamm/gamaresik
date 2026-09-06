@@ -46,14 +46,20 @@ cd functions && npm test # logika zero-shot/few-shot/selective (offline)
 
 ## Konfigurasi & kredensial
 
-`GEMINI_API_KEY` hanya disimpan di Cloud Functions Secret Manager:
-
-```bash
-firebase functions:secrets:set GEMINI_API_KEY
-```
+Klasifikasi berjalan di **Vertex AI** memakai Application Default Credentials milik Cloud Function itu sendiri — tidak ada API key yang perlu disimpan, dirotasi, atau bisa bocor.
 
 > **Jangan pernah** menambahkan `.env` atau file kredensial apa pun ke daftar `assets:` di `pubspec.yaml` — seluruh isi `assets:` ikut dibungkus ke dalam APK/IPA dan mudah diekstrak.
 
-Biaya Gemini terpisah dari Firebase Blaze; kuotanya dikelola di https://ai.studio/projects.
+Biaya Vertex AI ditagihkan ke billing account Blaze project ini. Pastikan `aiplatform.googleapis.com` tetap aktif.
+
+### Build rilis Android
+
+Penandatanganan rilis membaca `android/key.properties` yang menunjuk ke `android/gamaresik-release.jks`. Keduanya gitignored dan **tidak ada di repo** — tanpa file itu, `flutter build apk --release` turun ke debug key dan mencetak peringatan.
+
+```bash
+flutter build apk --release
+```
+
+SHA-1 dan SHA-256 sertifikat rilis harus terdaftar di Firebase Console (Project Settings → app Android). Kalau tidak, Google Sign-In gagal dengan `ApiException: 10` walau build-nya sukses.
 
 Dokumentasi arsitektur lengkap ada di [CLAUDE.md](CLAUDE.md).

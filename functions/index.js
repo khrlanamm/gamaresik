@@ -265,12 +265,22 @@ function toHttpsError(err) {
   const message = String((err && err.message) || "");
 
   if (status === 429 || /RESOURCE_EXHAUSTED|quota|credits are depleted/i.test(message)) {
-    // On Vertex this is a project quota ceiling or a disabled billing account,
-    // not the prepaid-credit wall the AI Studio key used to hit.
-    logger.error("Vertex AI quota exhausted or billing inactive", err);
+    // Dua keadaan berbeda memakai kode HTTP yang sama, dan tindakan yang benar
+    // bagi pengguna bertolak belakang. Batas laju per menit hilang sendiri
+    // dalam hitungan detik, sedangkan kredit habis atau penagihan nonaktif
+    // tidak akan membaik betapa pun seringnya dicoba ulang.
+    const habis = /credits are depleted|billing|per day|daily limit/i.test(message);
+    if (habis) {
+      logger.error("Vertex AI quota exhausted or billing inactive", err);
+      return new HttpsError(
+          "resource-exhausted",
+          "Kuota layanan AI sedang habis. Silakan hubungi pengelola aplikasi.",
+      );
+    }
+    logger.warn("Vertex AI rate limit hit; the caller should retry shortly", err);
     return new HttpsError(
-        "resource-exhausted",
-        "Kuota layanan AI sedang habis. Silakan hubungi pengelola aplikasi.",
+        "unavailable",
+        "Layanan AI sedang ramai. Tunggu sebentar lalu coba lagi.",
     );
   }
   if (status === 403 || /PERMISSION_DENIED|aiplatform\.googleapis\.com/i.test(message)) {

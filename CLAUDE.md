@@ -61,12 +61,14 @@ MVVM with `provider`; navigation is plain `Navigator.push`/`pop` (no routing pac
 
 Clients may only **read** their own `users/{uid}/**` and their own `scans/{uid}/**` images. Every write that matters (scan logs, counters, few-shot pool) goes through a Cloud Function's Admin SDK. Users cannot inflate their own achievement counters — this is enforced by rules and covered by a live rules test.
 
-`GEMINI_API_KEY` lives only in Cloud Functions Secret Manager. **Never add `.env` (or any credential) to the `flutter: assets:` list in pubspec.yaml** — assets are packaged into the shipped APK/IPA and trivially extractable. This previously shipped a live key to every install.
+Classification runs on **Vertex AI**, not the Gemini Developer API: `functions/index.js` builds `new GoogleGenAI({ vertexai: true, project, location })` and authenticates with the function's own Application Default Credentials. There is no API key to store, rotate, or leak. **Never add `.env` (or any credential) to the `flutter: assets:` list in pubspec.yaml** — assets are packaged into the shipped APK/IPA and trivially extractable. This previously shipped a live key to every install.
+
+Android release builds are signed from `android/key.properties` + `android/gamaresik-release.jks`, both gitignored. The release SHA-1 and SHA-256 are registered on the Firebase Android app alongside the debug SHA-1 — Google Sign-In fails with `ApiException: 10` on any build whose signing certificate is not registered.
 
 ### Known gaps / gotchas
 
-- **Gemini billing is separate from Firebase Blaze.** The key is a Google AI Studio key with its own prepaid credits at https://ai.studio/projects. When those run out, `classifyWaste` returns `resource-exhausted` and the app shows "Kuota layanan AI sedang habis…". Firebase quota has nothing to do with it.
-- The Gemini model id in `functions/index.js` is hardcoded (`gemini-3.6-flash`). Google has been retiring model ids for new API consumers faster than the docs update — if classification starts 404ing on the model, check https://ai.google.dev/gemini-api/docs/models.
+- **Vertex AI is billed to the project's Blaze billing account.** A `resource-exhausted` from `classifyWaste` (surfaced as "Kuota layanan AI sedang habis…") means a project quota ceiling or an inactive billing account — not a prepaid balance. `functions/index.js` also maps a `403` to a reminder that `aiplatform.googleapis.com` must stay enabled.
+- The model id in `functions/index.js` is hardcoded (`gemini-3.6-flash`) and served from the `global` Vertex location, which is where Gemini 3.x publisher models are exposed. If classification starts 404ing on the model, check the Vertex model garden rather than the AI Studio docs.
 - `few_shot_data` starts empty, so few-shot/selective escalation has nothing to draw on until real corrections accumulate. Selective mode degrades gracefully to the zero-shot result and records `escalated: true`.
 - Firebase config (`lib/firebase_options.dart`, `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`) is committed and tied to the `gamaresik` project — do not regenerate casually.
 - The `firebase` MCP server in `.mcp.json` authenticates with the repo-root service-account key: fine for Firestore/Storage/Auth reads, but it lacks IAM/Secret Manager/deploy permissions. **Use the `firebase` CLI directly for anything that deploys, manages secrets, or touches IAM.**

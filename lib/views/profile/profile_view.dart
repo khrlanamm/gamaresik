@@ -313,23 +313,55 @@ class _ProfileViewState extends State<ProfileView> {
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  /// Dialog "Tentang" dibangun sendiri, bukan lewat showAboutDialog, sebab
+  /// showAboutDialog selalu menyertakan tombol lisensi bawaan Flutter yang
+  /// menampilkan lisensi seluruh paket pihak ketiga — tidak berguna bagi
+  /// pengguna aplikasi ini dan tidak dapat disembunyikan lewat parameter.
   void _showAbout(BuildContext context) {
-    showAboutDialog(
+    final teks = Theme.of(context).textTheme;
+    showDialog<void>(
       context: context,
-      applicationName: 'GamaWaste',
-      applicationVersion: '1.0.0',
-      applicationIcon: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        child: Image.asset('assets/brands/logo_icon.png', width: 40, height: 40),
-      ),
-      applicationLegalese: '© 2026 GamaWaste — Universitas Gadjah Mada',
-      children: const [
-        SizedBox(height: 16),
-        Text(
-          'GamaWaste membantu civitas UGM memilah sampah dengan cepat dan tepat '
-          'sesuai standar pengelolaan sampah kampus.',
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              child: Image.asset('assets/brands/logo_icon.png',
+                  width: 40, height: 40),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('GamaWaste', style: teks.titleMedium),
+                  Text('1.0.1', style: teks.bodySmall),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'GamaWaste membantu civitas UGM memilah sampah dengan cepat dan '
+              'tepat sesuai standar pengelolaan sampah kampus.',
+            ),
+            const SizedBox(height: 16),
+            Text('© 2026 GamaWaste - Universitas Gadjah Mada',
+                style: teks.bodySmall),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
     );
   }
 

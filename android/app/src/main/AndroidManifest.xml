@@ -1,4 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- camera_android_camerax mendeklarasikan RECORD_AUDIO karena mendukung perekaman
+         video. GamaWaste hanya mengambil foto, jadi izin mikrofon dicabut di sini agar
+         tidak muncul di halaman izin aplikasi. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove"/>
+
     <application
         android:label="GamaWaste"
         android:name="${applicationName}"

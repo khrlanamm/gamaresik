@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ScanViewModel extends ChangeNotifier {
   CameraController? _controller;
@@ -8,11 +9,19 @@ class ScanViewModel extends ChangeNotifier {
   bool _isCapturing = false;
   bool _isDisposed = false;
   String? _errorMessage;
+  bool _permissionPermanentlyDenied = false;
 
   CameraController? get controller => _controller;
   bool get isInitialized => _isInitialized;
   bool get isCapturing => _isCapturing;
   String? get errorMessage => _errorMessage;
+
+  /// True ketika izin ditolak permanen, sehingga "Coba Lagi" tidak akan
+  /// menolong dan yang dibutuhkan adalah membuka pengaturan aplikasi.
+  bool get permissionPermanentlyDenied => _permissionPermanentlyDenied;
+
+  /// Membuka halaman pengaturan aplikasi di pengaturan sistem.
+  Future<void> openSettings() => openAppSettings();
 
   /// Guards against notifying after the view is gone, which throws.
   void _safeNotify() {
@@ -22,9 +31,28 @@ class ScanViewModel extends ChangeNotifier {
   Future<void> initializeCamera() async {
     _errorMessage = null;
     _isInitialized = false;
+    _permissionPermanentlyDenied = false;
     _safeNotify();
 
     try {
+      // Izin diminta lebih dulu dan ditunggu jawabannya. Menyerahkannya kepada
+      // CameraController.initialize() membuat panggilan itu melempar
+      // CameraAccessDenied pada saat dialog sistem masih terbuka, sehingga
+      // layar menampilkan "izin ditolak" padahal pengguna belum menjawab —
+      // dan baru berhasil ketika layar dibuka untuk kedua kalinya.
+      final status = await Permission.camera.request();
+      if (_isDisposed) return;
+      if (!status.isGranted) {
+        _permissionPermanentlyDenied =
+            status.isPermanentlyDenied || status.isRestricted;
+        _errorMessage = _permissionPermanentlyDenied
+            ? 'Izin kamera diblokir. Aktifkan izin kamera di pengaturan '
+                'aplikasi untuk memakai pemindai.'
+            : 'Izin kamera diperlukan untuk memindai sampah.';
+        _safeNotify();
+        return;
+      }
+
       _cameras ??= await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
         _errorMessage = 'Tidak ada kamera yang tersedia di perangkat ini.';

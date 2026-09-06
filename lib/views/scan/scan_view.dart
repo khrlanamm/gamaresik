@@ -285,10 +285,18 @@ class _ScanViewState extends State<ScanView> with WidgetsBindingObserver {
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: vm.initializeCamera,
-                child: const Text('Coba Lagi'),
-              ),
+              // Ketika izin diblokir permanen, mencoba lagi tidak akan
+              // memunculkan dialog sistem sekali pun, sehingga yang ditawarkan
+              // adalah jalan yang benar-benar dapat menyelesaikannya.
+              child: vm.permissionPermanentlyDenied
+                  ? ElevatedButton(
+                      onPressed: vm.openSettings,
+                      child: const Text('Buka Pengaturan'),
+                    )
+                  : ElevatedButton(
+                      onPressed: vm.initializeCamera,
+                      child: const Text('Coba Lagi'),
+                    ),
             ),
             const SizedBox(height: 12),
             TextButton(
