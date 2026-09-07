@@ -13,6 +13,7 @@ import '../models/scan_record.dart';
 import '../models/user_stats.dart';
 import '../models/waste_category.dart';
 import 'gama_backend.dart';
+import 'image_compressor.dart';
 
 export 'gama_backend.dart' show GamaBackend, ScanException;
 
@@ -99,6 +100,11 @@ class FirebaseService implements GamaBackend {
 
     await validateImage(imageFile);
 
+    // Dikompresi lebih dulu supaya unggahan tidak membawa byte yang tidak
+    // menambah informasi bagi model. Gagal kompresi mengembalikan file asli,
+    // jadi jalur ini tidak pernah menggagalkan pemindaian.
+    final uploadFile = await ImageCompressor.compress(imageFile);
+
     final storagePath = 'scans/$uid/$scanId.jpg';
     final ref = _storage.ref(storagePath);
 
@@ -106,7 +112,7 @@ class FirebaseService implements GamaBackend {
       // Bounded so a stalled upload surfaces a retry instead of spinning
       // indefinitely on a flaky connection.
       await ref
-          .putFile(imageFile, SettableMetadata(contentType: 'image/jpeg'))
+          .putFile(uploadFile, SettableMetadata(contentType: 'image/jpeg'))
           .timeout(const Duration(seconds: 90));
       final imageUrl = await ref.getDownloadURL().timeout(const Duration(seconds: 30));
       return (storagePath: storagePath, imageUrl: imageUrl);
@@ -120,6 +126,13 @@ class FirebaseService implements GamaBackend {
             ? 'Anda tidak berhak mengunggah gambar ini.'
             : 'Gagal mengunggah gambar. Periksa koneksi Anda lalu coba lagi.',
       );
+    } finally {
+      // Hanya menghapus salinan hasil kompresi; foto asli masih dipakai
+      // ResultView sebagai pratinjau. Dijalankan juga saat gagal, supaya
+      // percobaan ulang tidak menumpuk berkas sementara.
+      if (!identical(uploadFile, imageFile)) {
+        await ImageCompressor.disposeTemp(uploadFile);
+      }
     }
   }
 
