@@ -83,9 +83,14 @@ export function pesanGalat(galat) {
   if (galat && galat.code === "functions/permission-denied") {
     return "Kode tidak dikenali. Periksa kembali huruf dan angkanya.";
   }
-  if (galat && (galat.code === "functions/unavailable" ||
-                galat.code === "functions/internal")) {
+  if (galat && galat.code === "functions/unavailable") {
     return "Tidak dapat menghubungi server. Periksa jaringan lalu coba lagi.";
+  }
+  // Kode benar tetapi server gagal menyelesaikan permintaan. Menyuruh anotator
+  // memeriksa jaringannya hanya menyesatkan, sebab jaringannya baik-baik saja.
+  if (galat && galat.code === "functions/internal") {
+    return "Kode benar, tetapi layanan masuk sedang bermasalah. " +
+           "Beri tahu peneliti, jangan ulangi terus.";
   }
   return "Terjadi kendala. Coba lagi sebentar.";
 }
