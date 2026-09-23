@@ -88,18 +88,22 @@ body[data-layar="kerja"] .kerja { display: flex; }
 .kepala {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   padding: 10px 14px calc(10px);
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: var(--panel);
   border-bottom: 1px solid var(--garis);
 }
 
-.hitung { font-variant-numeric: tabular-nums; font-weight: 600; }
+.hitung { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.hitung .dari { color: var(--redup); font-weight: 400; }
+.hitung.kecil { font-size: 13px; font-weight: 400; color: var(--redup); }
 .kepala .sisa { color: var(--redup); font-size: 13px; }
 
 .bilah {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 80px;
   height: 6px;
   background: var(--panel-terang);
   border-radius: 999px;
@@ -127,19 +131,37 @@ body[data-layar="kerja"] .kerja { display: flex; }
 }
 
 .panggung {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
   place-items: center;
-  padding: 10px;
+  padding: 12px;
   background: #0c1013;
 }
 
+/* Citra dibatasi supaya tombol kategori selalu terlihat tanpa menggulir, dan
+   supaya objek tidak tampak lebih besar daripada seharusnya di layar lebar. */
 .panggung img {
+  max-width: min(100%, 560px);
+  max-height: min(100%, 52dvh);
+  object-fit: contain;
+  border-radius: 8px;
+  background: #0a0d10;
+  cursor: zoom-in;
+}
+
+.panggung[data-besar="ya"] img {
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
-  border-radius: 6px;
+  cursor: zoom-out;
+}
+
+.perbesar {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  background: rgba(20, 24, 28, .82);
 }
 
 /* ------------------------------------------------------------ pilihan */
@@ -289,3 +311,156 @@ body[data-layar="pantau"] .pantau { display: block; }
 }
 .pantau code { font-size: 12px; background: var(--panel-terang); padding: 1px 5px; border-radius: 5px; }
 .pantau a, .masuk a { color: var(--aksen); }
+
+/* ------------------------------------------------------------- peta citra */
+/* Anotator mengerjakan ratusan citra dalam beberapa kali duduk. Peta memberi
+   gambaran utuh sekaligus jalan pintas ke nomor mana pun, sehingga jawaban yang
+   telanjur salah dapat diperbaiki tanpa menekan tombol mundur puluhan kali. */
+#peta {
+  width: min(96vw, 940px);
+  max-height: 88dvh;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.peta-kepala {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px;
+  border-bottom: 1px solid var(--garis);
+}
+
+.peta-kepala strong { margin-right: auto; font-size: 16px; }
+
+.saring { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.saring button {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--garis);
+  border-radius: 999px;
+  color: var(--redup);
+}
+
+.saring button[aria-pressed="true"] {
+  background: rgba(77, 182, 160, .16);
+  border-color: var(--aksen);
+  color: #bfe6d8;
+}
+
+#form-lompat { display: flex; gap: 6px; }
+
+#lompat {
+  width: 84px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: center;
+  background: var(--panel-terang);
+  color: var(--tinta);
+  border: 1px solid var(--garis);
+  border-radius: 8px;
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--redup);
+  border-bottom: 1px solid var(--garis);
+}
+
+.legenda span { display: flex; align-items: center; gap: 6px; }
+
+.kotak-warna {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--garis);
+  display: inline-block;
+}
+
+.kotak-warna.organik { background: rgba(90, 164, 105, .45); border-color: var(--organik); }
+.kotak-warna.recycle { background: rgba(215, 177, 63, .40); border-color: var(--recycle); }
+.kotak-warna.residu { background: rgba(207, 107, 90, .42); border-color: var(--residu); }
+.kotak-warna.kosong { background: var(--panel-terang); }
+.kotak-warna.bertanda { background: var(--panel-terang); position: relative; }
+.kotak-warna.bertanda::after {
+  content: "";
+  position: absolute;
+  top: 1px; right: 1px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--recycle);
+}
+
+.kisi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+  padding: 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sel {
+  position: relative;
+  min-height: 42px;
+  padding: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: var(--panel-terang);
+  border: 1px solid var(--garis);
+  border-radius: 8px;
+  color: var(--redup);
+}
+
+.sel[data-keadaan="organic"] {
+  background: rgba(90, 164, 105, .30); border-color: var(--organik); color: var(--tinta);
+}
+.sel[data-keadaan="recyclable"] {
+  background: rgba(215, 177, 63, .26); border-color: var(--recycle); color: var(--tinta);
+}
+.sel[data-keadaan="residual"] {
+  background: rgba(207, 107, 90, .28); border-color: var(--residu); color: var(--tinta);
+}
+
+.sel[data-ragu="ya"]::after {
+  content: "";
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--recycle);
+}
+
+.sel[data-catatan="ya"]::before {
+  content: "";
+  position: absolute;
+  bottom: 4px; left: 4px;
+  width: 10px; height: 2px;
+  border-radius: 2px;
+  background: var(--redup);
+}
+
+.sel[aria-current="true"] {
+  outline: 2px solid var(--aksen);
+  outline-offset: 1px;
+  color: var(--tinta);
+}
+
+.sel:active { transform: scale(.96); }
+
+@media (max-width: 520px) {
+  .kisi { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); }
+  .peta-kepala strong { width: 100%; margin-right: 0; }
+  .panggung img { max-height: min(100%, 46dvh); }
+}

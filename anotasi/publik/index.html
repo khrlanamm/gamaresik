@@ -22,15 +22,22 @@
 
 <section class="kerja">
   <header class="kepala">
-    <span class="hitung"><span id="ke">0</span> / <span id="total">445</span></span>
-    <span class="bilah"><span id="bilah-isi"></span></span>
+    <button class="ikon" id="tombol-peta" type="button" title="Peta citra (P)">
+      Peta
+    </button>
+    <span class="hitung">No.&nbsp;<span id="nomor">1</span><span
+          class="dari">/<span id="total">445</span></span></span>
+    <span class="bilah" title="Kemajuan"><span id="bilah-isi"></span></span>
+    <span class="hitung kecil"><span id="ke">0</span>&nbsp;dinilai</span>
     <span class="status" id="status">siap</span>
     <button class="ikon" id="tombol-pedoman" type="button" title="Pedoman (?)">?</button>
     <button class="ikon" id="tombol-keluar" type="button">Keluar</button>
   </header>
 
-  <div class="panggung">
+  <div class="panggung" id="panggung">
     <img id="citra" alt="Citra sampah yang sedang dinilai">
+    <button class="ikon perbesar" id="tombol-perbesar" type="button"
+            title="Perbesar citra (Z)">Perbesar</button>
   </div>
 
   <footer class="kaki">
@@ -52,12 +59,14 @@
       </button>
     </div>
     <div class="sekunder">
-      <button type="button" id="tombol-mundur">← Sebelumnya</button>
+      <button type="button" id="tombol-mundur" title="Citra sebelumnya (←)">←</button>
+      <button type="button" id="tombol-maju" title="Citra berikutnya (→)">→</button>
       <button type="button" id="tombol-ragu" aria-pressed="false">Ragu (U)</button>
       <button type="button" id="tombol-catatan">Catatan (C)</button>
     </div>
     <div class="catatan" id="kotak-catatan">
-      <textarea id="catatan" maxlength="500" placeholder="Catatan singkat, boleh dikosongkan."></textarea>
+      <textarea id="catatan" maxlength="500"
+                placeholder="Catatan singkat, boleh dikosongkan."></textarea>
     </div>
   </footer>
 </section>
@@ -68,8 +77,38 @@
     <p>citra selesai dinilai. Terima kasih.</p>
     <p class="galat" id="selesai-rinci"></p>
     <button class="tombol-utama" id="tombol-tinjau" type="button">Tinjau yang ragu</button>
+    <button class="ikon" id="tombol-peta-selesai" type="button">Buka peta citra</button>
   </div>
 </section>
+
+<dialog id="peta">
+  <header class="peta-kepala">
+    <strong>Peta citra</strong>
+    <div class="saring" role="group" aria-label="Saring citra">
+      <button type="button" data-saring="semua" aria-pressed="true">Semua</button>
+      <button type="button" data-saring="belum">Belum</button>
+      <button type="button" data-saring="ragu">Ragu</button>
+      <button type="button" data-saring="catatan">Bercatatan</button>
+    </div>
+    <form id="form-lompat">
+      <input id="lompat" type="number" min="1" step="1" inputmode="numeric"
+             placeholder="No." aria-label="Lompat ke nomor">
+      <button class="ikon" type="submit">Lompat</button>
+    </form>
+    <button class="ikon" id="tutup-peta" type="button">Tutup</button>
+  </header>
+
+  <div class="legenda">
+    <span><i class="kotak-warna organik"></i>Organik</span>
+    <span><i class="kotak-warna recycle"></i>Recycle bersih</span>
+    <span><i class="kotak-warna residu"></i>Residu</span>
+    <span><i class="kotak-warna kosong"></i>Belum dinilai</span>
+    <span><i class="kotak-warna bertanda"></i>Bertanda ragu</span>
+    <span class="catatan-kecil" id="peta-ringkas"></span>
+  </div>
+
+  <div class="kisi" id="kisi"></div>
+</dialog>
 
 <dialog id="pedoman">
   <h2>Pedoman tiga kategori</h2>
@@ -106,11 +145,15 @@
   <h3>Tombol</h3>
   <p><strong>1</strong> organik &middot; <strong>2</strong> recycle bersih &middot;
      <strong>3</strong> residu &middot; <strong>U</strong> tandai ragu &middot;
-     <strong>C</strong> catatan &middot; <strong>←</strong> kembali ke citra sebelumnya.</p>
+     <strong>C</strong> catatan &middot; <strong>Z</strong> perbesar citra &middot;
+     <strong>P</strong> peta citra &middot; <strong>←</strong> dan
+     <strong>→</strong> pindah citra.</p>
   <p>Tandai <strong>ragu</strong> bila Anda benar-benar tidak yakin. Tetap pilih
      satu kategori yang menurut Anda paling mendekati.</p>
   <p>Jawaban tersimpan sendiri setiap kali Anda memilih. Menutup halaman tidak
-     menghilangkan pekerjaan, dan Anda melanjutkan dari citra terakhir.</p>
+     menghilangkan pekerjaan, dan Anda melanjutkan dari citra terakhir. Lewat
+     <strong>peta citra</strong> Anda dapat melompat ke nomor mana pun dan
+     memperbaiki jawaban yang sudah telanjur.</p>
 
   <button class="tombol-utama" id="tutup-pedoman" type="button">Mengerti</button>
 </dialog>

@@ -82,7 +82,19 @@ firebase deploy --only hosting
 5. Matikan jaringan, nilai tiga citra, hidupkan lagi, dan pastikan ketiganya
    terkirim.
 
+## Peta citra
+
+Tombol **Peta** membuka kisi 445 kotak bernomor, satu kotak per citra menurut
+urutan anotator itu sendiri. Warna kotak menyatakan kategori yang ia pilih,
+titik kuning menandai ragu, dan garis kecil menandai catatan. Mengetuk kotak
+melompat ke citra itu, sehingga jawaban yang telanjur salah dapat diperbaiki
+tanpa menekan tombol mundur puluhan kali. Saringan Belum, Ragu, dan Bercatatan
+mempersempit kisi, dan kolom nomor melompat langsung.
+
+Peta hanya memuat jawaban anotator itu sendiri. Ia tidak memuat label awal
+penelitian maupun jawaban anotator lain.
+
 ## Pintasan papan tik
 
 `1` organik · `2` recycle bersih · `3` residu · `U` tandai ragu · `C` catatan ·
-`←` citra sebelumnya · `?` pedoman.
+`Z` perbesar citra · `P` peta citra · `←` dan `→` pindah citra · `?` pedoman.

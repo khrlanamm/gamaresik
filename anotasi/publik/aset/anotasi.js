@@ -23,7 +23,7 @@ const badan = document.body;
 
 let idAnotator = "";
 let daftar = [];            // katalog, sudah diurutkan untuk anotator ini
-let antrean = [];           // yang sedang dikerjakan: seluruhnya atau yang ragu
+let nomorKode = new Map();  // kode -> nomor urut anotator ini, mulai dari 1
 let jawaban = new Map();    // kode -> jawaban tersimpan
 let posisi = 0;
 let ragu = false;
@@ -31,6 +31,7 @@ let mulaiPada = 0;
 let menunggu = 0;           // tulisan yang belum sampai ke server
 let adaWaktuMulai = false;  // dimulaiPada sudah tercatat pada kemajuan
 const alamatCitra = new Map();
+const sel = new Map();      // kode -> tombol pada peta
 
 // ------------------------------------------------------------------ masuk
 $("form-masuk").addEventListener("submit", async (e) => {
@@ -75,18 +76,21 @@ async function mulai() {
   daftar = katalog.docs
       .map((d) => ({ kode: d.id, ...d.data() }))
       .sort((a, b) => kunci(a).localeCompare(kunci(b)));
+  nomorKode = new Map(daftar.map((c, i) => [c.kode, i + 1]));
   jawaban = new Map(milik.docs.map((d) => [d.id, d.data()]));
   adaWaktuMulai = kemajuan.exists() && Boolean(kemajuan.data().dimulaiPada);
 
   $("total").textContent = String(daftar.length);
+  $("lompat").max = String(daftar.length);
+  bangunPeta();
   if (!jawaban.size) $("pedoman").showModal();
 
-  antrean = daftar;
-  posisi = daftar.findIndex((c) => !jawaban.has(c.kode));
-  if (posisi < 0) { tampilkanSelesai(); return; }
+  const belum = daftar.findIndex((c) => !jawaban.has(c.kode));
   badan.dataset.layar = "kerja";
+  posisi = belum < 0 ? daftar.length - 1 : belum;
   tandaiSimpan();
   await tampilkan();
+  if (belum < 0) tampilkanSelesai();
 }
 
 /** Kunci urut milik anotator ini, dengan kode sebagai cadangan. */
@@ -102,8 +106,8 @@ async function alamat(citra) {
 }
 
 async function tampilkan() {
-  if (posisi >= antrean.length) { tampilkanSelesai(); return; }
-  const citra = antrean[posisi];
+  if (posisi < 0 || posisi >= daftar.length) return;
+  const citra = daftar[posisi];
   const tersimpan = jawaban.get(citra.kode);
 
   ragu = Boolean(tersimpan && tersimpan.ragu);
@@ -111,11 +115,14 @@ async function tampilkan() {
   $("catatan").value = (tersimpan && tersimpan.catatan) || "";
   $("kotak-catatan").dataset.buka = $("catatan").value ? "ya" : "tidak";
   $("tombol-mundur").disabled = posisi === 0;
+  $("tombol-maju").disabled = posisi === daftar.length - 1;
+  $("nomor").textContent = String(posisi + 1);
+  $("panggung").dataset.besar = "tidak";
   perbaruiBilah();
+  sorotSel();
 
-  const nomor = daftar.findIndex((c) => c.kode === citra.kode) + 1;
   const gambar = $("citra");
-  gambar.alt = "Citra nomor " + nomor + " dari " + daftar.length;
+  gambar.alt = "Citra nomor " + (posisi + 1) + " dari " + daftar.length;
   try {
     gambar.src = await alamat(citra);
   } catch (galat) {
@@ -125,7 +132,7 @@ async function tampilkan() {
   mulaiPada = Date.now();
 
   for (let i = 1; i <= PRAMUAT; i++) {
-    const depan = antrean[posisi + i];
+    const depan = daftar[posisi + i];
     if (!depan) break;
     alamat(depan).then((url) => { new Image().src = url; }).catch(() => {});
   }
@@ -139,7 +146,7 @@ function perbaruiBilah() {
 // -------------------------------------------------------------- menjawab
 async function jawab(kategori) {
   if (!KATEGORI.includes(kategori)) return;
-  const citra = antrean[posisi];
+  const citra = daftar[posisi];
   if (!citra) return;
 
   const isian = {
@@ -148,12 +155,13 @@ async function jawab(kategori) {
     ragu,
     catatan: $("catatan").value.trim().slice(0, 500),
     durasiMs: Math.min(Math.max(Date.now() - mulaiPada, 0), DURASI_MAKS_MS),
-    urutanKe: daftar.findIndex((c) => c.kode === citra.kode) + 1,
+    urutanKe: posisi + 1,
     dibuatPada: serverTimestamp(),
     diubahPada: serverTimestamp(),
     versiApp: VERSI,
   };
   jawaban.set(citra.kode, isian);
+  perbaruiSel(citra.kode);
 
   // Sengaja tidak ditunggu. Antrean Firestore menjamin pengirimannya, termasuk
   // sesudah jaringan putus, dan anotator langsung maju ke citra berikutnya.
@@ -164,7 +172,11 @@ async function jawab(kategori) {
       .finally(() => { menunggu = Math.max(0, menunggu - 1); tandaiSimpan(); });
   simpanKemajuan();
 
-  posisi += 1;
+  if (jawaban.size >= daftar.length) { tampilkanSelesai(); return; }
+  // Maju ke citra yang belum dinilai, bukan sekadar nomor berikutnya, supaya
+  // memperbaiki jawaban lama tidak melemparkan anotator ke tengah pekerjaan.
+  const lanjut = daftar.findIndex((c, i) => i > posisi && !jawaban.has(c.kode));
+  posisi = lanjut < 0 ? daftar.findIndex((c) => !jawaban.has(c.kode)) : lanjut;
   await tampilkan();
 }
 
@@ -202,6 +214,82 @@ function tampilkanSelesai() {
   $("tombol-tinjau").hidden = jumlahRagu === 0;
 }
 
+// ------------------------------------------------------------ peta citra
+function bangunPeta() {
+  const kisi = $("kisi");
+  const potongan = document.createDocumentFragment();
+  sel.clear();
+  for (const citra of daftar) {
+    const tombol = document.createElement("button");
+    tombol.type = "button";
+    tombol.className = "sel";
+    tombol.textContent = String(nomorKode.get(citra.kode));
+    tombol.dataset.kode = citra.kode;
+    potongan.appendChild(tombol);
+    sel.set(citra.kode, tombol);
+    perbaruiSel(citra.kode);
+  }
+  kisi.replaceChildren(potongan);
+  kisi.addEventListener("click", (e) => {
+    const tombol = e.target.closest(".sel");
+    if (tombol) lompat(Number(tombol.textContent));
+  });
+}
+
+function perbaruiSel(kode) {
+  const tombol = sel.get(kode);
+  if (!tombol) return;
+  const j = jawaban.get(kode);
+  tombol.dataset.keadaan = (j && j.kategori) || "belum";
+  tombol.dataset.ragu = j && j.ragu ? "ya" : "tidak";
+  tombol.dataset.catatan = j && j.catatan ? "ya" : "tidak";
+  tombol.title = "Citra " + nomorKode.get(kode) +
+      (j ? " — sudah dinilai" : " — belum dinilai");
+  saringSatu(tombol);
+  ringkasPeta();
+}
+
+function sorotSel() {
+  for (const [kode, tombol] of sel) {
+    const kini = nomorKode.get(kode) === posisi + 1;
+    tombol.setAttribute("aria-current", kini ? "true" : "false");
+  }
+}
+
+let saringKini = "semua";
+
+function saringSatu(tombol) {
+  const sudah = tombol.dataset.keadaan !== "belum";
+  const tampil =
+      saringKini === "semua" ? true :
+      saringKini === "belum" ? !sudah :
+      saringKini === "ragu" ? tombol.dataset.ragu === "ya" :
+      tombol.dataset.catatan === "ya";
+  tombol.hidden = !tampil;
+}
+
+function ringkasPeta() {
+  const nilai = [...jawaban.values()];
+  $("peta-ringkas").textContent =
+      `${jawaban.size} dinilai · ${daftar.length - jawaban.size} belum · ` +
+      `${nilai.filter((j) => j.ragu).length} ragu`;
+}
+
+function bukaPeta() {
+  $("peta").showModal();
+  sorotSel();
+  const kini = sel.get(daftar[posisi] && daftar[posisi].kode);
+  if (kini && !kini.hidden) kini.scrollIntoView({ block: "center" });
+}
+
+async function lompat(nomor) {
+  if (!Number.isFinite(nomor) || nomor < 1 || nomor > daftar.length) return;
+  posisi = nomor - 1;
+  if ($("peta").open) $("peta").close();
+  badan.dataset.layar = "kerja";
+  await tampilkan();
+}
+
 // -------------------------------------------------------------- kendali
 document.querySelectorAll(".pilihan button").forEach((b) => {
   b.addEventListener("click", () => jawab(b.dataset.kategori));
@@ -218,39 +306,73 @@ $("tombol-catatan").addEventListener("click", () => {
   if (kotak.dataset.buka === "ya") $("catatan").focus();
 });
 
-$("tombol-mundur").addEventListener("click", async () => {
-  if (posisi === 0) return;
-  posisi -= 1;
-  await tampilkan();
+$("tombol-mundur").addEventListener("click", () => lompat(posisi));
+$("tombol-maju").addEventListener("click", () => lompat(posisi + 2));
+
+$("tombol-perbesar").addEventListener("click", perbesar);
+$("citra").addEventListener("click", perbesar);
+
+function perbesar() {
+  const panggung = $("panggung");
+  const besar = panggung.dataset.besar === "ya";
+  panggung.dataset.besar = besar ? "tidak" : "ya";
+  $("tombol-perbesar").textContent = besar ? "Perbesar" : "Perkecil";
+}
+
+$("tombol-peta").addEventListener("click", bukaPeta);
+$("tombol-peta-selesai").addEventListener("click", bukaPeta);
+$("tutup-peta").addEventListener("click", () => $("peta").close());
+
+document.querySelectorAll(".saring button").forEach((b) => {
+  b.addEventListener("click", () => {
+    saringKini = b.dataset.saring;
+    document.querySelectorAll(".saring button").forEach((lain) => {
+      lain.setAttribute("aria-pressed", lain === b ? "true" : "false");
+    });
+    for (const tombol of sel.values()) saringSatu(tombol);
+  });
+});
+
+$("form-lompat").addEventListener("submit", (e) => {
+  e.preventDefault();
+  lompat(Number($("lompat").value));
+  $("lompat").value = "";
 });
 
 $("tombol-pedoman").addEventListener("click", () => $("pedoman").showModal());
 $("tutup-pedoman").addEventListener("click", () => $("pedoman").close());
 
-// Peninjauan memakai salinan daftar ragu yang dibekukan saat tombol ditekan,
-// sehingga melepas tanda ragu tidak menggeser citra yang belum ditinjau.
-$("tombol-tinjau").addEventListener("click", async () => {
-  const ragunya = daftar.filter((c) => {
+// Peninjauan membawa anotator ke citra ragu yang pertama; sisanya dijangkau
+// lewat peta dengan saringan "Ragu".
+$("tombol-tinjau").addEventListener("click", () => {
+  const pertama = daftar.findIndex((c) => {
     const j = jawaban.get(c.kode);
     return j && j.ragu;
   });
-  if (!ragunya.length) return;
-  antrean = ragunya;
-  posisi = 0;
-  badan.dataset.layar = "kerja";
-  await tampilkan();
+  if (pertama < 0) return;
+  saringKini = "ragu";
+  document.querySelectorAll(".saring button").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.saring === "ragu" ? "true" : "false");
+  });
+  for (const tombol of sel.values()) saringSatu(tombol);
+  lompat(pertama + 1);
 });
 
 document.addEventListener("keydown", (e) => {
   if (badan.dataset.layar !== "kerja") return;
+  if (document.querySelector("dialog[open]")) return;
   if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") {
     if (e.key === "Escape") e.target.blur();
     return;
   }
+  const huruf = e.key.toLowerCase();
   if (TOMBOL_KE_KATEGORI[e.key]) { e.preventDefault(); jawab(TOMBOL_KE_KATEGORI[e.key]); }
-  else if (e.key.toLowerCase() === "u") { e.preventDefault(); $("tombol-ragu").click(); }
-  else if (e.key.toLowerCase() === "c") { e.preventDefault(); $("tombol-catatan").click(); }
-  else if (e.key === "ArrowLeft") { e.preventDefault(); $("tombol-mundur").click(); }
+  else if (huruf === "u") { e.preventDefault(); $("tombol-ragu").click(); }
+  else if (huruf === "c") { e.preventDefault(); $("tombol-catatan").click(); }
+  else if (huruf === "z") { e.preventDefault(); perbesar(); }
+  else if (huruf === "p") { e.preventDefault(); bukaPeta(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); lompat(posisi); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); lompat(posisi + 2); }
   else if (e.key === "?") { e.preventDefault(); $("pedoman").showModal(); }
 });
 
