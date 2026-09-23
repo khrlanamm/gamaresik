@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Anotasi Sampah GamaWaste</title>
+<link rel="stylesheet" href="/aset/gaya.css">
+</head>
+<body data-layar="masuk">
+
+<section class="masuk">
+  <form id="form-masuk" autocomplete="off">
+    <h1>Anotasi Citra Sampah</h1>
+    <p>Masukkan kode yang diberikan peneliti.</p>
+    <input id="kode" name="kode" inputmode="text" autocapitalize="characters"
+           spellcheck="false" placeholder="KODE ANDA" aria-label="Kode masuk" required>
+    <button class="tombol-utama" id="tombol-masuk" type="submit">Masuk</button>
+    <p class="galat" id="galat-masuk" role="alert"></p>
+  </form>
+</section>
+
+<section class="kerja">
+  <header class="kepala">
+    <span class="hitung"><span id="ke">0</span> / <span id="total">445</span></span>
+    <span class="bilah"><span id="bilah-isi"></span></span>
+    <span class="status" id="status">siap</span>
+    <button class="ikon" id="tombol-pedoman" type="button" title="Pedoman (?)">?</button>
+    <button class="ikon" id="tombol-keluar" type="button">Keluar</button>
+  </header>
+
+  <div class="panggung">
+    <img id="citra" alt="Citra sampah yang sedang dinilai">
+  </div>
+
+  <footer class="kaki">
+    <div class="pilihan">
+      <button type="button" data-kategori="organic">
+        <span class="titik organik"></span>
+        <span class="nama">Organik</span>
+        <span class="tombol-angka">1</span>
+      </button>
+      <button type="button" data-kategori="recyclable">
+        <span class="titik recycle"></span>
+        <span class="nama">Recycle bersih</span>
+        <span class="tombol-angka">2</span>
+      </button>
+      <button type="button" data-kategori="residual">
+        <span class="titik residu"></span>
+        <span class="nama">Residu</span>
+        <span class="tombol-angka">3</span>
+      </button>
+    </div>
+    <div class="sekunder">
+      <button type="button" id="tombol-mundur">← Sebelumnya</button>
+      <button type="button" id="tombol-ragu" aria-pressed="false">Ragu (U)</button>
+      <button type="button" id="tombol-catatan">Catatan (C)</button>
+    </div>
+    <div class="catatan" id="kotak-catatan">
+      <textarea id="catatan" maxlength="500" placeholder="Catatan singkat, boleh dikosongkan."></textarea>
+    </div>
+  </footer>
+</section>
+
+<section class="selesai">
+  <div class="kotak">
+    <p class="angka-besar" id="selesai-jumlah">445</p>
+    <p>citra selesai dinilai. Terima kasih.</p>
+    <p class="galat" id="selesai-rinci"></p>
+    <button class="tombol-utama" id="tombol-tinjau" type="button">Tinjau yang ragu</button>
+  </div>
+</section>
+
+<dialog id="pedoman">
+  <h2>Pedoman tiga kategori</h2>
+  <p>Nilai kondisi objek <strong>sebagaimana terlihat pada foto</strong>, bukan
+     kondisinya setelah dicuci atau dibersihkan.</p>
+
+  <h3><span class="titik organik"></span> Organik</h3>
+  <p>Mudah terurai secara alami: sisa makanan, potongan ranting dan daun, kulit
+     buah, tisu, serta kemasan berbahan pulp kertas tanpa lapisan plastik.</p>
+  <ul>
+    <li>Tisu tetap organik meskipun sudah terpakai atau terkena minyak.</li>
+    <li>Bungkus makanan dari kertas berlapis plastik tidak termasuk.</li>
+  </ul>
+
+  <h3><span class="titik recycle"></span> Recycle bersih</h3>
+  <p>Anorganik bernilai ekonomi, materialnya masih utuh, dan layak didaur ulang:
+     botol plastik, kertas HVS atau koran bersih, kaleng logam, botol kaca,
+     kardus, dan kemasan plastik keras.</p>
+  <ul>
+    <li>Debu atau tanah di permukaan tidak menggugurkan kategori ini, sepanjang
+        wadahnya sudah kosong dan kering.</li>
+  </ul>
+
+  <h3><span class="titik residu"></span> Residu</h3>
+  <p>Anorganik tanpa nilai ekonomi, sulit didaur ulang, atau tercemar minyak dan
+     lemak: kemasan sachet berlapis, kemasan karton minuman, plastik lembaran,
+     peralatan makan sekali pakai, masker, kapas, popok, kantong plastik kotor,
+     styrofoam, puntung rokok, dan bungkus makanan berminyak.</p>
+  <ul>
+    <li>Wadah yang masih berisi atau berlumur sisa makanan termasuk residu,
+        meskipun materialnya sendiri dapat didaur ulang.</li>
+  </ul>
+
+  <h3>Tombol</h3>
+  <p><strong>1</strong> organik &middot; <strong>2</strong> recycle bersih &middot;
+     <strong>3</strong> residu &middot; <strong>U</strong> tandai ragu &middot;
+     <strong>C</strong> catatan &middot; <strong>←</strong> kembali ke citra sebelumnya.</p>
+  <p>Tandai <strong>ragu</strong> bila Anda benar-benar tidak yakin. Tetap pilih
+     satu kategori yang menurut Anda paling mendekati.</p>
+  <p>Jawaban tersimpan sendiri setiap kali Anda memilih. Menutup halaman tidak
+     menghilangkan pekerjaan, dan Anda melanjutkan dari citra terakhir.</p>
+
+  <button class="tombol-utama" id="tutup-pedoman" type="button">Mengerti</button>
+</dialog>
+
+<script type="module" src="/aset/anotasi.js"></script>
+</body>
+</html>

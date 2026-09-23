@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Pemantauan Anotasi</title>
+<link rel="stylesheet" href="/aset/gaya.css">
+</head>
+<body data-layar="masuk">
+
+<section class="masuk">
+  <form id="form-masuk" autocomplete="off">
+    <h1>Pemantauan Anotasi</h1>
+    <p>Halaman peneliti. Anotator memakai <a href="/">halaman anotasi</a>.</p>
+    <input id="kode" name="kode" inputmode="text" autocapitalize="characters"
+           spellcheck="false" placeholder="KODE PENELITI" aria-label="Kode peneliti" required>
+    <button class="tombol-utama" id="tombol-masuk" type="submit">Masuk</button>
+    <p class="galat" id="galat-masuk" role="alert"></p>
+  </form>
+</section>
+
+<section class="pantau" id="layar-pantau">
+  <h1>Kemajuan anotasi</h1>
+  <p class="catatan-kecil">
+    Halaman ini tidak menampilkan satu pun label, baik label anotator maupun
+    label awal penelitian, supaya anotasi tetap buta sampai selesai.
+    <button class="ikon" id="tombol-keluar" type="button">Keluar</button>
+  </p>
+
+  <div id="kartu-kartu"></div>
+
+  <div class="kartu">
+    <h2>Langkah berikutnya</h2>
+    <p class="catatan-kecil" style="margin:6px 0 0">
+      Setelah keduanya selesai, jalankan <code>src/anotasi_tarik.py</code> lalu
+      <code>src/kesepakatan.py</code> pada repositori eksperimen untuk menghitung
+      kappa dan tabel silang.
+    </p>
+  </div>
+</section>
+
+<script type="module" src="/aset/pantau.js"></script>
+</body>
+</html>

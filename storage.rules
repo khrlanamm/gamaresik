@@ -14,6 +14,15 @@ service firebase.storage {
       allow delete: if false;
     }
 
+    // Salinan kecil citra penelitian untuk studi anotasi ulang. Hanya terbaca
+    // oleh pemegang kode anotator; peneliti sengaja tidak diberi klaim itu,
+    // sehingga halaman pemantauannya tidak mungkin menampilkan citra yang
+    // sedang dinilai. Unggahan dikerjakan Admin SDK yang melewati aturan ini.
+    match /anotasi/citra/{berkas} {
+      allow read: if request.auth != null && request.auth.token.anotator == true;
+      allow write, delete: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

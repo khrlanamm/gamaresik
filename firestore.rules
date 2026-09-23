@@ -36,6 +36,71 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- studi anotasi ulang -------------------------------------------
+    // Dua anotator melabeli ulang citra penelitian secara buta agar naskah
+    // dapat melaporkan kesepakatan antaranotator. Mereka masuk lewat kode,
+    // bukan akun Google, dan klaim pada tokennya dipasang masukAnotator.
+    function anotator() {
+      return request.auth != null && request.auth.token.peran == 'anotator';
+    }
+    function peneliti() {
+      return request.auth != null && request.auth.token.peran == 'peneliti';
+    }
+    function milikku(idAnotator) {
+      return request.auth != null && request.auth.token.idAnotator == idAnotator;
+    }
+
+    // Katalog citra. Tidak memuat satu pun medan yang menyiratkan kategori,
+    // sebab label awal sengaja tidak pernah diunggah ke Firestore.
+    match /anotasi_katalog/{kode} {
+      allow read: if anotator();
+      allow write: if false;
+    }
+
+    // Jawaban anotator. Hanya pemiliknya yang boleh membaca dan menulis, dan
+    // peneliti pun tidak diberi akses sama sekali supaya kebutaan tetap utuh
+    // selama anotasi berlangsung.
+    match /anotasi_jawaban/{idAnotator} {
+      allow read, write: if false;
+
+      match /jawaban/{kode} {
+        allow read: if anotator() && milikku(idAnotator);
+        allow create, update: if anotator() && milikku(idAnotator)
+          && request.resource.data.keys().hasOnly(['kode', 'kategori', 'ragu',
+               'catatan', 'durasiMs', 'urutanKe', 'dibuatPada', 'diubahPada',
+               'versiApp'])
+          && request.resource.data.kode == kode
+          && request.resource.data.kategori in ['organic', 'recyclable', 'residual']
+          && request.resource.data.ragu is bool
+          && request.resource.data.catatan is string
+          && request.resource.data.catatan.size() <= 500
+          && request.resource.data.durasiMs is int
+          && request.resource.data.durasiMs >= 0
+          && request.resource.data.urutanKe is int
+          && request.resource.data.diubahPada == request.time;
+        allow delete: if false;
+      }
+    }
+
+    // Kemajuan, satu dokumen per anotator. Inilah satu-satunya yang dibaca
+    // halaman pemantauan: cacahnya saja, tanpa label apa pun.
+    match /anotasi_kemajuan/{idAnotator} {
+      allow read: if peneliti() || (anotator() && milikku(idAnotator));
+      allow write: if anotator() && milikku(idAnotator)
+        && request.resource.data.keys().hasOnly(['idAnotator', 'jumlahSelesai',
+             'jumlahRagu', 'jumlahCatatan', 'detikAktif', 'dimulaiPada',
+             'terakhirAktif', 'selesai'])
+        && request.resource.data.idAnotator == idAnotator
+        && request.resource.data.jumlahSelesai is int
+        && request.resource.data.jumlahSelesai >= 0
+        && request.resource.data.jumlahSelesai <= 500
+        && request.resource.data.terakhirAktif == request.time;
+    }
+
+    // Kode masuk dan pencatat percobaan gagal: hanya untuk Cloud Function.
+    match /anotasi_akun/{idAnotator} { allow read, write: if false; }
+    match /anotasi_gerbang/{kunci} { allow read, write: if false; }
+
     match /{document=**} {
       allow read, write: if false;
     }

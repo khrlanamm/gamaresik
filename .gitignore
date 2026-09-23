@@ -67,3 +67,7 @@ ios/Flutter/flutter_export_environment.sh
 ios/Flutter/ephemeral/
 ios/Flutter/Flutter.podspec
 ios/Runner.xcworkspace/xcuserdata/
+
+# Firebase CLI cache (hasil unggah hosting)
+.firebase/
+functions-anotasi/node_modules/
