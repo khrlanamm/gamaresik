@@ -1,65 +1,69 @@
 # GamaWaste (`gamaresik`)
 
-Aplikasi Flutter untuk klasifikasi sampah di Universitas Gadjah Mada. Pengguna login dengan Google, memindai sampah dengan kamera, dan mendapatkan rekomendasi kategori beserta warna tempat sampah sesuai standar UGM.
+![GamaWaste feature graphic](https://raw.githubusercontent.com/khrlanamm/khrlanamm/main/assets/projects/gamawaste.webp)
 
-Klasifikasi dijalankan oleh Google Gemini melalui Firebase Cloud Functions — aplikasi tidak pernah memanggil Gemini secara langsung.
+Flutter app for waste classification at Universitas Gadjah Mada. Users sign in with Google, scan a piece of waste with the camera, and get the category and the matching UGM bin color.
 
-## Kategori sampah
+Classification runs on Google Gemini through Firebase Cloud Functions. The app never calls Gemini directly.
 
-| Kategori | Tempat sampah |
+This is the app for my undergraduate thesis, *Pengembangan Aplikasi Mobile Klasifikasi Sampah Berbasis Generative AI dan Selective Few-Shot Learning* (Computer Science, UGM). Selective few-shot reached 94.4% accuracy, against 77.8% for a MobileNetV2 baseline. [Thesis at ETD UGM](https://etd.repository.ugm.ac.id/penelitian/detail/286836)
+
+## Waste categories
+
+| Category | Bin |
 | --- | --- |
-| Organik Terpilah | Hijau |
-| Recycle Bersih Terpilah | Kuning |
-| Residu Terpilah | Merah |
+| Organik Terpilah (sorted organic) | Green |
+| Recycle Bersih Terpilah (clean recyclables) | Yellow |
+| Residu Terpilah (residual) | Red |
 
-## Mekanisme klasifikasi
+## Classification modes
 
-Mode diatur dari Firestore (`app_config/settings`) tanpa perlu build ulang aplikasi:
+The mode is set in Firestore (`app_config/settings`) without a new build:
 
-- **`zero-shot`** — satu kali inferensi tanpa contoh.
-- **`few-shot`** — inferensi dengan contoh tervalidasi dari koleksi `few_shot_data`.
-- **`selective`** — selalu zero-shot lebih dulu; jika `confidence_score` di bawah `confidence_threshold`, sistem mengambil `few_shot_count` contoh tervalidasi lalu menjalankan ulang klasifikasi (re-inference).
+- **`zero-shot`**: one inference with no examples.
+- **`few-shot`**: inference with validated examples from the `few_shot_data` collection.
+- **`selective`**: always zero-shot first. If `confidence_score` is below `confidence_threshold`, the function fetches `few_shot_count` validated examples and classifies again (re-inference).
 
-Koreksi pengguna lewat tombol **"Laporan Hasil Tidak Tepat"** disimpan sebagai contoh tervalidasi, sehingga akurasi few-shot meningkat seiring pemakaian.
+User corrections through the **"Laporan Hasil Tidak Tepat"** (report wrong result) button are saved as validated examples, so few-shot accuracy improves with use.
 
-## Menjalankan
+## Running
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Backend (perlu akses ke project Firebase `gamaresik`):
+Backend (needs access to the Firebase project `gamaresik`):
 
 ```bash
 cd functions && npm install
 firebase deploy --only functions,firestore,storage
 ```
 
-## Testing
+## Tests
 
 ```bash
-flutter analyze          # analisis statis
-flutter test             # unit + widget test
-cd functions && npm test # logika zero-shot/few-shot/selective (offline)
+flutter analyze          # static analysis
+flutter test             # unit and widget tests
+cd functions && npm test # zero-shot, few-shot, and selective logic (offline)
 ```
 
-## Konfigurasi & kredensial
+## Configuration and credentials
 
-Klasifikasi berjalan di **Vertex AI** memakai Application Default Credentials milik Cloud Function itu sendiri — tidak ada API key yang perlu disimpan, dirotasi, atau bisa bocor.
+Classification runs on **Vertex AI** with the Cloud Function's own Application Default Credentials. There is no API key to store, rotate, or leak.
 
-> **Jangan pernah** menambahkan `.env` atau file kredensial apa pun ke daftar `assets:` di `pubspec.yaml` — seluruh isi `assets:` ikut dibungkus ke dalam APK/IPA dan mudah diekstrak.
+> **Never** add `.env` or any credential file to `assets:` in `pubspec.yaml`. Everything under `assets:` is packed into the APK or IPA and is easy to extract.
 
-Biaya Vertex AI ditagihkan ke billing account Blaze project ini. Pastikan `aiplatform.googleapis.com` tetap aktif.
+Vertex AI is billed to the project's Blaze billing account. Keep `aiplatform.googleapis.com` enabled.
 
-### Build rilis Android
+### Android release build
 
-Penandatanganan rilis membaca `android/key.properties` yang menunjuk ke `android/gamaresik-release.jks`. Keduanya gitignored dan **tidak ada di repo** — tanpa file itu, `flutter build apk --release` turun ke debug key dan mencetak peringatan.
+Release signing reads `android/key.properties`, which points to `android/gamaresik-release.jks`. Both are gitignored and **not in the repo**. Without them, `flutter build apk --release` falls back to the debug key and prints a warning.
 
 ```bash
 flutter build apk --release
 ```
 
-SHA-1 dan SHA-256 sertifikat rilis harus terdaftar di Firebase Console (Project Settings → app Android). Kalau tidak, Google Sign-In gagal dengan `ApiException: 10` walau build-nya sukses.
+The SHA-1 and SHA-256 of the release certificate must be registered in the Firebase Console (Project Settings, Android app). Otherwise Google Sign-In fails with `ApiException: 10` even though the build succeeds.
 
-Dokumentasi arsitektur lengkap ada di [CLAUDE.md](CLAUDE.md).
+Architecture notes are in [CLAUDE.md](CLAUDE.md).
