@@ -67,3 +67,7 @@ flutter build apk --release
 The SHA-1 and SHA-256 of the release certificate must be registered in the Firebase Console (Project Settings, Android app). Otherwise Google Sign-In fails with `ApiException: 10` even though the build succeeds.
 
 Architecture notes are in [CLAUDE.md](CLAUDE.md).
+
+## License
+
+Code is released under the [MIT License](LICENSE). The GamaWaste name and logo (`assets/brands/`, `design/`) are not covered.
