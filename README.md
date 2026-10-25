@@ -1,5 +1,7 @@
 # GamaWaste (`gamaresik`)
 
+[![CI](https://github.com/khrlanamm/gamaresik/actions/workflows/ci.yml/badge.svg)](https://github.com/khrlanamm/gamaresik/actions/workflows/ci.yml)
+
 ![GamaWaste feature graphic](https://raw.githubusercontent.com/khrlanamm/khrlanamm/main/assets/projects/gamawaste.webp)
 
 Flutter app for waste classification at Universitas Gadjah Mada. Users sign in with Google, scan a piece of waste with the camera, and get the category and the matching UGM bin color.
@@ -7,6 +9,25 @@ Flutter app for waste classification at Universitas Gadjah Mada. Users sign in w
 Classification runs on Google Gemini through Firebase Cloud Functions. The app never calls Gemini directly.
 
 This is the app for my undergraduate thesis, *Pengembangan Aplikasi Mobile Klasifikasi Sampah Berbasis Generative AI dan Selective Few-Shot Learning* (Computer Science, UGM). Selective few-shot reached 94.4% accuracy, against 77.8% for a MobileNetV2 baseline. [Thesis at ETD UGM](https://etd.repository.ugm.ac.id/penelitian/detail/286836)
+
+## Screenshots
+
+![Five app screens: sign-in, home with bin categories, camera, scan result, and scan history](docs/images/screens.webp)
+
+## Architecture
+
+![The Android app uploads the photo to Cloud Storage and calls a Cloud Function, which classifies it with Gemini through Vertex AI and saves the result to Firestore](docs/images/architecture.webp)
+
+1. The app uploads the photo to `scans/{uid}/` in Cloud Storage and calls `classifyWaste` with its path.
+2. The function reads the mode from `app_config/settings` and, when needed, validated examples from `few_shot_data`.
+3. Gemini classifies the photo through Vertex AI with the function's own credentials.
+4. The function logs the result under `users/{uid}/classifications` and returns it to the app.
+
+## Results
+
+![Accuracy and recall per category for MobileNetV2, zero-shot, and selective few-shot](docs/images/results.webp)
+
+Accuracy and recall per category (organic, recyclable, residual) on the thesis test set. Selective few-shot reached the highest accuracy (94.4%) and the best recall for recyclables.
 
 ## Waste categories
 
